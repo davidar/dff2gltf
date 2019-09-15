@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+#include "util.h"
+
 class LoaderIMGFile {
 public:
     uint32_t offset;
@@ -18,27 +20,11 @@ int main(int argc, char **argv) {
     std::string basename(argv[1]);
 
     auto dirPath = basename + ".dir";
-    FILE* fp = fopen(dirPath.c_str(), "rb");
-    if (!fp) return 1;
-
-    fseek(fp, 0, SEEK_END);
-    unsigned long fileSize = ftell(fp);
-    fseek(fp, 0, SEEK_SET);
-
     std::vector<LoaderIMGFile> assets;
-    std::size_t expectedCount = fileSize / 32;
-    assets.resize(expectedCount);
-    std::size_t actualCount = fread(&assets[0], sizeof(LoaderIMGFile), expectedCount, fp);
-
-    if (expectedCount != actualCount) {
-        assets.resize(actualCount);
-        printf("Error reading records in IMG archive\n");
-    }
-
-    fclose(fp);
+    readfile(dirPath, assets);
 
     auto imgPath = basename + ".img";
-    fp = fopen(imgPath.c_str(), "rb");
+    FILE* fp = fopen(imgPath.c_str(), "rb");
     if (!fp) return 1;
 
     for (auto &asset : assets) {
