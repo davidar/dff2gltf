@@ -114,9 +114,11 @@ int main(int argc, char **argv) {
 
         texture.write(name + ".png"); 
 
-        FILE* meta = fopen((name + ".json").c_str(), "w");
-        fprintf(meta, "{\"alphaMode\": \"%s\", ",
-                transparent ? "BLEND" : "OPAQUE");
+        FILE* meta = fopen((name + ".txt").c_str(), "w");
+        fprintf(meta, "%s", transparent ? "BLEND" : "OPAQUE");
+        fclose(meta);
+
+        meta = fopen((name + ".json").c_str(), "w");
 
         GLenum texFilter = GL_LINEAR;
         switch (texNative.filterflags & 0xFF) {
@@ -129,7 +131,7 @@ int main(int argc, char **argv) {
                 break;
         }
 
-        fprintf(meta, "\"minFilter\": %d, ", GL_LINEAR_MIPMAP_LINEAR);
+        fprintf(meta, "{\"minFilter\": %d, ", GL_LINEAR_MIPMAP_LINEAR);
         fprintf(meta, "\"magFilter\": %d, ", texFilter);
 
         GLenum texwrap = GL_REPEAT;
