@@ -3,6 +3,8 @@ img2files
 txd2png
 dff2glr
 *.bin
+/img/
+/txd/
 
 # Prerequisites
 *.d

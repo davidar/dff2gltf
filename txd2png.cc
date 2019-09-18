@@ -54,8 +54,8 @@ int main(int argc, char **argv) {
         std::transform(alpha.begin(), alpha.end(), alpha.begin(), ::tolower);
 
         if (texNative.platform != 8) {
-            printf("Unsupported texture platform %d\n", texNative.platform);
-            return 1;
+            printf("Error: unsupported texture platform %d\n", texNative.platform);
+            break;
         }
 
         bool isPal8 =
@@ -70,8 +70,8 @@ int main(int argc, char **argv) {
               RW::BSTextureNative::FORMAT_888);
 
         if (!(isPal8 || isFulc)) {
-            printf("Unsupported raster format %d\n", texNative.rasterformat);
-            return 1;
+            printf("Error: unsupported raster format %d\n", texNative.rasterformat);
+            break;
         }
 
         Magick::Image texture;
@@ -91,8 +91,9 @@ int main(int argc, char **argv) {
             switch (texNative.rasterformat) {
                 case RW::BSTextureNative::FORMAT_1555:
                     format = "RGBA";
-                    printf("Error: type = GL_UNSIGNED_SHORT_1_5_5_5_REV");
-                    return 1;
+                    //type = GL_UNSIGNED_SHORT_1_5_5_5_REV;
+                    printf("Warning: ignoring %s\n", name.c_str());
+                    continue;
                     break;
                 case RW::BSTextureNative::FORMAT_8888:
                     format = "BGRA";
