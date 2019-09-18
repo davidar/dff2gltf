@@ -6,6 +6,7 @@ dff2glr
 /img/
 /txd/
 /gltf/
+/glr/
 
 # Prerequisites
 *.d

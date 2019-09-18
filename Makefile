@@ -21,3 +21,8 @@ gltf: txd dff2glr
 	mkdir -p gltf
 	ln -svf ../txd gltf
 	cd gltf && ls ../img/*.dff ../img/*.DFF | xargs -tn1 ../dff2gltf && cd ..
+
+glr: txd dff2glr
+	mkdir -p glr
+	ln -svf ../txd glr
+	cd glr && ls ../img/*.dff ../img/*.DFF | xargs -tn1 ../dff2glr.sh && cd ..

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const fs = require('fs');
+const fs = require('fs')
 
 const schemas = {
   "scene": {
@@ -86,6 +86,10 @@ function push_unique(arr, elt) {
 }
 
 function lift(obj, type) {
+  if (type === 'node' && obj.hasOwnProperty('$ref')) {
+    const ext = JSON.parse(fs.readFileSync(obj['$ref']).toString())
+    obj = Object.assign(ext.scene.nodes[0], obj)
+  }
   if (typeof type === 'string' || type instanceof String) {
     const types = plural(type)
     if (!model.hasOwnProperty(types)) model[types] = []
