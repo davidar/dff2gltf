@@ -450,41 +450,9 @@ AtomicPtr readAtomic(FrameList &framelist,
     return atomic;
 }
 
-void gltf(AtomicPtr atomic) {
+void printAttribute(int i, const AtomicPtr &atomic, std::string modelName) {
     auto &geom = atomic->getGeometry();
     auto &name = atomic->getFrame()->getName();
-
-    GLenum mode = geom->facetype == Geometry::Triangles ? GL_TRIANGLES : GL_TRIANGLE_STRIP;
-
-    printf("{\"asset\": {\"generator\": \"dff2gltf\", \"version\": \"2.0\"},\n");
-    printf("\"buffers\": [");
-    size_t attrLength = sizeof(GeometryVertex) * geom->verts.size();
-    printf("{\"uri\": \"%s.attributes.bin\", \"byteLength\": %lu}, ",
-            name.c_str(), attrLength);
-    FILE* bin = fopen((name + ".attributes.bin").c_str(), "wb");
-    fwrite(geom->verts.data(), sizeof(GeometryVertex), geom->verts.size(), bin);
-    fclose(bin);
-
-    size_t icount = std::accumulate(
-        geom->subgeom.begin(), geom->subgeom.end(), size_t{0u},
-        [](size_t a, const SubGeometry &b) { return a + b.numIndices; });
-    printf("{\"uri\": \"%s.indices.bin\", \"byteLength\": %lu}",
-            name.c_str(), sizeof(uint32_t) * icount);
-    printf("],\n");
-
-    printf("\"bufferViews\":\n");
-    printf("[{\"buffer\": 0, \"target\": %d, \"byteLength\": %lu, \"byteStride\": %lu}\n",
-            GL_ARRAY_BUFFER, attrLength, sizeof(GeometryVertex));
-
-    bin = fopen((name + ".indices.bin").c_str(), "wb");
-    for (auto &sg : geom->subgeom) {
-        printf(",{\"buffer\": 1, \"target\": %d, \"byteOffset\": %lu, \"byteLength\": %lu}\n",
-                GL_ELEMENT_ARRAY_BUFFER, sg.start * sizeof(uint32_t), sizeof(uint32_t) * sg.numIndices);
-        fwrite(sg.indices.data(), sizeof(uint32_t), sg.numIndices, bin);
-    }
-    fclose(bin);
-    printf("],\n");
-
     glm::vec3 minPos = std::accumulate(
         std::next(geom->verts.begin()), geom->verts.end(), geom->verts[0].position,
         [](glm::vec3 a, const GeometryVertex &v) { return glm::min(a, v.position); });
@@ -492,70 +460,77 @@ void gltf(AtomicPtr atomic) {
         std::next(geom->verts.begin()), geom->verts.end(), geom->verts[0].position,
         [](glm::vec3 a, const GeometryVertex &v) { return glm::max(a, v.position); });
 
-    printf("\"accessors\":\n[");
-    for (auto &attr : GeometryVertex::vertex_attributes()) {
-        if (attr.offset) printf(",");
-        printf("{\"bufferView\": 0, \"type\": \"VEC%d\", \"byteOffset\": %lu, \"componentType\": %d, \"count\": %lu",
-                attr.size, attr.offset, attr.type, geom->verts.size());
-        if (attr.sem == ATRS_Position) {
-            printf(", \"min\": [%.9g,%.9g,%.9g]", minPos.x, minPos.y, minPos.z);
-            printf(", \"max\": [%.9g,%.9g,%.9g]", maxPos.x, maxPos.y, maxPos.z);
-        } else if (attr.sem == ATRS_Colour) {
-            printf(", \"normalized\": true");
-        }
-        printf("}\n");
+    printf("{\"bufferView\": {\"buffer\": ");
+    size_t attrLength = sizeof(GeometryVertex) * geom->verts.size();
+    printf("{\"uri\": \"%s.attributes.bin\", \"byteLength\": %lu}",
+            (modelName + name).c_str(), attrLength);
+    printf(", \"target\": %d, \"byteLength\": %lu, \"byteStride\": %lu}\n",
+            GL_ARRAY_BUFFER, attrLength, sizeof(GeometryVertex));
+
+    auto attr = GeometryVertex::vertex_attributes()[i];
+    printf(", \"type\": \"VEC%d\", \"byteOffset\": %lu, \"componentType\": %d, \"count\": %lu",
+            attr.size, attr.offset, attr.type, geom->verts.size());
+    if (attr.sem == ATRS_Position) {
+        printf(", \"min\": [%.9g,%.9g,%.9g]", minPos.x, minPos.y, minPos.z);
+        printf(", \"max\": [%.9g,%.9g,%.9g]", maxPos.x, maxPos.y, maxPos.z);
+    } else if (attr.sem == ATRS_Colour) {
+        printf(", \"normalized\": true");
     }
-    for (auto const &sg : geom->subgeom | boost::adaptors::indexed(1)) {
-        printf(",{\"bufferView\": %lu, \"type\": \"SCALAR\", \"componentType\": %d, \"count\": %lu}\n",
-                sg.index(), GL_UNSIGNED_INT, sg.value().numIndices);
+    printf("}\n");
+}
+
+void printAtomic(const AtomicPtr &atomic, std::string modelName) {
+    auto &geom = atomic->getGeometry();
+    auto &name = atomic->getFrame()->getName();
+    if (!modelName.empty()) modelName = modelName + ".";
+    FILE* bin = fopen((modelName + name + ".attributes.bin").c_str(), "wb");
+    fwrite(geom->verts.data(), sizeof(GeometryVertex), geom->verts.size(), bin);
+    fclose(bin);
+
+    bin = fopen((modelName + name + ".indices.bin").c_str(), "wb");
+    for (auto &sg : geom->subgeom) {
+        fwrite(sg.indices.data(), sizeof(uint32_t), sg.numIndices, bin);
     }
-    printf("],\n");
+    fclose(bin);
 
     const std::string txd = "txd/";
 
-    printf("\"images\":\n[");
-    for (auto &mat : geom->materials) {
+    printf("{\"name\": \"%s\", \"mesh\": {\"primitives\": [\n", name.c_str());
+    for (auto const &sg : geom->subgeom) {
+        printf("{\"mode\": %d", geom->facetype == Geometry::Triangles ? GL_TRIANGLES : GL_TRIANGLE_STRIP);
+        printf(", \"attributes\": ");
+        printf("{ \"POSITION\": ");
+        printAttribute(0, atomic, modelName);
+        printf(", \"NORMAL\": ");
+        printAttribute(1, atomic, modelName);
+        printf(", \"TEXCOORD_0\": ");
+        printAttribute(2, atomic, modelName);
+        printf(", \"COLOR_0\": ");
+        printAttribute(3, atomic, modelName);
+        printf("}");
+        printf(", \"indices\": {\"bufferView\": {\"buffer\": ");
+        size_t icount = std::accumulate(
+            geom->subgeom.begin(), geom->subgeom.end(), size_t{0u},
+            [](size_t a, const SubGeometry &b) { return a + b.numIndices; });
+        printf("{\"uri\": \"%s.indices.bin\", \"byteLength\": %lu}",
+                (modelName + name).c_str(), sizeof(uint32_t) * icount);
+        printf(", \"target\": %d, \"byteOffset\": %lu, \"byteLength\": %lu}\n",
+                GL_ELEMENT_ARRAY_BUFFER, sg.start * sizeof(uint32_t), sizeof(uint32_t) * sg.numIndices);
+        printf(", \"type\": \"SCALAR\", \"componentType\": %d, \"count\": %lu}\n",
+                GL_UNSIGNED_INT, sg.numIndices);
+        printf(", \"material\": ");
+        int matIndex = sg.material;
+        auto const &mat = geom->materials[matIndex];
+        printf("{\"pbrMetallicRoughness\": {\"baseColorTexture\": {\"index\": {\"source\": ");
         printf("{\"uri\": \"%s\"}\n", (txd + mat.textures[0].name + ".png").c_str());
-        if (&mat != &geom->materials.back()) printf(",");
-    }
-    printf("],\n");
-
-    printf("\"samplers\":\n[");
-    for (auto &mat : geom->materials) {
+        printf(", \"sampler\": ");
         cat(txd + mat.textures[0].name + ".json");
-        if (&mat != &geom->materials.back()) printf(",");
+        printf("}}}, \"doubleSided\": true, \"alphaMode\": \"");
+        cat(txd + mat.textures[0].name + ".txt");
+        printf("\"}}\n");
+        if (&sg != &geom->subgeom.back()) printf(",");
     }
-    printf("],\n");
-
-    printf("\"textures\":\n[");
-    for (int i = 0; i < geom->materials.size(); i++) {
-        if (i) printf(",");
-        printf("{\"source\": %d, \"sampler\": %d}\n", i, i);
-    }
-    printf("],\n");
-
-    printf("\"materials\":\n[");
-    for (auto const &mat : geom->materials | boost::adaptors::indexed(0)) {
-        if (mat.index()) printf(",");
-        printf("{\"pbrMetallicRoughness\": {\"baseColorTexture\": {\"index\": %lu}}, ", mat.index());
-        printf("\"doubleSided\": true, \"alphaMode\": \"");
-        cat(txd + mat.value().textures[0].name + ".txt");
-        printf("\"}\n");
-    }
-    printf("],\n");
-
-    printf("\"meshes\": [{\"primitives\":\n[");
-    const char *attrobj = "\"attributes\": {\"POSITION\": 0, \"NORMAL\": 1, \"TEXCOORD_0\": 2, \"COLOR_0\": 3}";
-    for (auto const &sg : geom->subgeom | boost::adaptors::indexed(4)) {
-        printf("{\"mode\": %d, \"indices\": %lu, \"material\": %lu, %s}\n",
-                mode, sg.index(), sg.value().material, attrobj);
-        if (&sg.value() != &geom->subgeom.back()) printf(",");
-    }
-    printf("]}],\n");
-
-    printf("\"nodes\": [{\"mesh\": 0, \"rotation\": [-0.5,0.5,0.5,0.5]}],\n");
-    printf("\"scenes\": [{\"nodes\": [0]}],\n");
-    printf("\"scene\": 0}\n");
+    printf("]}}");
 }
 
 void load(const std::string &fname) {
@@ -581,8 +556,13 @@ void load(const std::string &fname) {
     std::uint32_t numAtomics = bit_cast<std::uint32_t>(*rootStream.getCursor());
     (void)numAtomics;
 
+    printf("{\"asset\": {\"generator\": \"dff2gltf\", \"version\": \"2.0\"},\n");
+    printf("\"scene\": {\"nodes\": [{\"children\": [");
+
     GeometryList geometrylist;
     FrameList framelist;
+    std::string modelName = "";
+    int readAtomics = 0;
 
     // Process everything inside the clump stream.
     RWBStream::ChunkID chunkID;
@@ -590,30 +570,39 @@ void load(const std::string &fname) {
         switch (chunkID) {
             case CHUNK_FRAMELIST:
                 framelist = readFrameList(modelStream);
+                if (!framelist.empty()) {
+                    model->setFrame(framelist[0]);
+                    modelName = model->getFrame()->getName();
+                }
                 break;
             case CHUNK_GEOMETRYLIST:
                 geometrylist = readGeometryList(modelStream);
                 break;
             case CHUNK_ATOMIC: {
+                if (readAtomics++) printf(",");
                 auto atomic = readAtomic(framelist, geometrylist, modelStream);
                 if (!atomic) {
                     // Abort reading the rest of the clump
                     throw "Failed to read atomic";
                 }
                 model->addAtomic(atomic);
-                gltf(atomic);
+                printAtomic(atomic, modelName);
             } break;
             default:
                 break;
         }
     }
 
-    if (!framelist.empty()) {
-        model->setFrame(framelist[0]);
+    printf("]");
+
+    if (!modelName.empty()) {
+        printf(", \"name\": \"%s\"", modelName.c_str());
     }
 
     // Ensure the model has cached metrics
     model->recalculateMetrics();
+
+    printf(", \"rotation\": [-0.5,0.5,0.5,0.5]}]}}\n");
 }
 
 int main(int argc, char **argv) {

@@ -1,7 +1,8 @@
 .*.swp
 img2files
 txd2png
-dff2gltf
+dff2glr
+*.bin
 
 # Prerequisites
 *.d

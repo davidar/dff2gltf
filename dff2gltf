@@ -1,0 +1,7 @@
+#!/bin/sh
+
+IN="$1"
+INL="`echo "$IN" | tr A-Z a-z`"
+OUT="`basename "$INL" .dff`.gltf"
+
+./dff2glr "$IN" | ./glr2gltf.js > "$OUT"
