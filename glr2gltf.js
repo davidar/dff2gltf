@@ -66,7 +66,10 @@ const schemas = {
   }
 }
 
-let model = JSON.parse(fs.readFileSync('/dev/stdin').toString())
+let contents = fs.readFileSync('/dev/stdin').toString()
+if (!contents) process.exit()
+
+let model = JSON.parse(contents)
 
 function plural(word) {
   if (word === 'mesh') return word + 'es'

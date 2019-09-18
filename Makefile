@@ -1,7 +1,8 @@
 CC = clang++
 CXX = clang++
-CXXFLAGS = $(shell pkg-config --cflags Magick++)
-LDFLAGS = $(shell pkg-config --libs Magick++)
+DEBUG_FLAGS = -g -fsanitize=address
+CXXFLAGS = $(shell pkg-config --cflags Magick++) $(DEBUG_FLAGS)
+LDFLAGS = $(shell pkg-config --libs Magick++) $(DEBUG_FLAGS)
 
 dff2glr: dff2glr.o Clump.o
 
@@ -15,3 +16,8 @@ txd: img txd2png
 	mkdir -p txd
 	cd txd && ls ../img/*.txd ../img/*.TXD | xargs -tn1 ../txd2png && cd ..
 	touch txd
+
+gltf: txd dff2glr
+	mkdir -p gltf
+	ln -svf ../txd gltf
+	cd gltf && ls ../img/*.dff ../img/*.DFF | xargs -tn1 ../dff2gltf && cd ..

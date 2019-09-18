@@ -5,6 +5,7 @@ dff2glr
 *.bin
 /img/
 /txd/
+/gltf/
 
 # Prerequisites
 *.d

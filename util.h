@@ -31,3 +31,12 @@ void cat(const std::string &fname) {
     }
     fclose(fp);
 }
+
+bool exists(const std::string &fname) {
+    FILE* fp;
+    if ((fp = fopen(fname.c_str(), "r"))) {
+        fclose(fp);
+        return true;
+    }
+    return false;
+}

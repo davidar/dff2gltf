@@ -518,16 +518,30 @@ void printAtomic(const AtomicPtr &atomic, std::string modelName) {
                 GL_ELEMENT_ARRAY_BUFFER, sg.start * sizeof(uint32_t), sizeof(uint32_t) * sg.numIndices);
         printf(", \"type\": \"SCALAR\", \"componentType\": %d, \"count\": %lu}\n",
                 GL_UNSIGNED_INT, sg.numIndices);
-        printf(", \"material\": ");
         int matIndex = sg.material;
         auto const &mat = geom->materials[matIndex];
-        printf("{\"pbrMetallicRoughness\": {\"baseColorTexture\": {\"index\": {\"source\": ");
-        printf("{\"uri\": \"%s\"}\n", (txd + mat.textures[0].name + ".png").c_str());
-        printf(", \"sampler\": ");
-        cat(txd + mat.textures[0].name + ".json");
-        printf("}}}, \"doubleSided\": true, \"alphaMode\": \"");
-        cat(txd + mat.textures[0].name + ".txt");
-        printf("\"}}\n");
+        printf(", \"material\": {");
+        if (!mat.textures.empty()) {
+            const std::string png = txd + mat.textures[0].name + ".png";
+            if (!exists(png)) {
+                fprintf(stderr, "Warning: missing texture %s\n", png.c_str());
+            } else {
+                printf("\"pbrMetallicRoughness\": {\"baseColorTexture\": {\"index\": {\"source\": ");
+                printf("{\"uri\": \"%s\"}\n", png.c_str());
+                printf(", \"sampler\": ");
+                cat(txd + mat.textures[0].name + ".json");
+                printf("}}}, \"alphaMode\": \"");
+                cat(txd + mat.textures[0].name + ".txt");
+                printf("\", ");
+            }
+        }
+        if ((geom->flags & RW::BSGeometry::ModuleMaterialColor) ==
+                RW::BSGeometry::ModuleMaterialColor) {
+            glm::vec4 c = glm::vec4(mat.colour) / 255.0f;
+            printf("\"pbrMetallicRoughness\": {\"baseColorFactor\": [%g,%g,%g,%g]}, ", c.r,c.g,c.b,c.a);
+        }
+        printf("\"doubleSided\": true}");
+        printf("}\n");
         if (&sg != &geom->subgeom.back()) printf(",");
     }
     printf("]}}");
@@ -536,6 +550,7 @@ void printAtomic(const AtomicPtr &atomic, std::string modelName) {
 void load(const std::string &fname) {
     std::vector<char> data;
     readfile(fname, data);
+    if (!data.size()) throw "Empty file";
 
     auto model = std::make_shared<Clump>();
 
