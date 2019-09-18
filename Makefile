@@ -4,3 +4,9 @@ CXXFLAGS = $(shell pkg-config --cflags Magick++)
 LDFLAGS = $(shell pkg-config --libs Magick++)
 
 dff2gltf: dff2gltf.o Clump.o
+
+GTA3 = $(HOME)/.steam/steam/steamapps/common/Grand\ Theft\ Auto\ 3
+
+img: img2files
+	mkdir -p img
+	cd img && ../img2files $(GTA3)/models/gta3 && cd ..

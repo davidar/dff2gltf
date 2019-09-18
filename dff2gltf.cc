@@ -511,21 +511,18 @@ void gltf(AtomicPtr atomic) {
     }
     printf("],\n");
 
+    const std::string txd = "txd/";
+
     printf("\"images\":\n[");
     for (auto &mat : geom->materials) {
-        printf("{\"uri\": \"txd/%s.png\"}\n", mat.textures[0].name.c_str());
+        printf("{\"uri\": \"%s\"}\n", (txd + mat.textures[0].name + ".png").c_str());
         if (&mat != &geom->materials.back()) printf(",");
     }
     printf("],\n");
 
     printf("\"samplers\":\n[");
     for (auto &mat : geom->materials) {
-        FILE* meta = fopen(("txd/" + mat.textures[0].name + ".json").c_str(), "r");
-        char buf[1024];
-        while (size_t buflen = fread(buf, 1, sizeof(buf), meta)) {
-            fwrite(buf, 1, buflen, stdout);
-        }
-        fclose(meta);
+        cat(txd + mat.textures[0].name + ".json");
         if (&mat != &geom->materials.back()) printf(",");
     }
     printf("],\n");
@@ -542,12 +539,7 @@ void gltf(AtomicPtr atomic) {
         if (mat.index()) printf(",");
         printf("{\"pbrMetallicRoughness\": {\"baseColorTexture\": {\"index\": %lu}}, ", mat.index());
         printf("\"doubleSided\": true, \"alphaMode\": \"");
-        FILE* meta = fopen(("txd/" + mat.value().textures[0].name + ".txt").c_str(), "r");
-        char buf[1024];
-        while (size_t buflen = fread(buf, 1, sizeof(buf), meta)) {
-            fwrite(buf, 1, buflen, stdout);
-        }
-        fclose(meta);
+        cat(txd + mat.value().textures[0].name + ".txt");
         printf("\"}\n");
     }
     printf("],\n");
@@ -566,9 +558,7 @@ void gltf(AtomicPtr atomic) {
     printf("\"scene\": 0}\n");
 }
 
-int main(int argc, char **argv) {
-    std::string fname(argv[1]);
-
+void load(const std::string &fname) {
     std::vector<char> data;
     readfile(fname, data);
 
@@ -606,10 +596,9 @@ int main(int argc, char **argv) {
                 break;
             case CHUNK_ATOMIC: {
                 auto atomic = readAtomic(framelist, geometrylist, modelStream);
-                assert(atomic && "Failed to read atomic");
                 if (!atomic) {
                     // Abort reading the rest of the clump
-                    return 1;
+                    throw "Failed to read atomic";
                 }
                 model->addAtomic(atomic);
                 gltf(atomic);
@@ -625,4 +614,15 @@ int main(int argc, char **argv) {
 
     // Ensure the model has cached metrics
     model->recalculateMetrics();
+}
+
+int main(int argc, char **argv) {
+    std::string fname(argv[1]);
+    try {
+        load(fname);
+    } catch (const std::string &s) {
+        fprintf(stderr, "Error: %s\n", s.c_str());
+    } catch (const char *s) {
+        fprintf(stderr, "Error: %s\n", s);
+    }
 }
