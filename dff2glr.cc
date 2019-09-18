@@ -520,25 +520,37 @@ void printAtomic(const AtomicPtr &atomic, std::string modelName) {
                 GL_UNSIGNED_INT, sg.numIndices);
         int matIndex = sg.material;
         auto const &mat = geom->materials[matIndex];
+        glm::vec4 c(-1);
+        if ((geom->flags & RW::BSGeometry::ModuleMaterialColor) ==
+                RW::BSGeometry::ModuleMaterialColor) {
+            c = glm::vec4(mat.colour) / 255.0f;
+        }
         printf(", \"material\": {");
-        if (!mat.textures.empty()) {
-            const std::string png = txd + mat.textures[0].name + ".png";
-            if (!exists(png)) {
-                fprintf(stderr, "Warning: missing texture %s\n", png.c_str());
-            } else {
-                printf("\"pbrMetallicRoughness\": {\"baseColorTexture\": {\"index\": {\"source\": ");
-                printf("{\"uri\": \"%s\"}\n", png.c_str());
+        if (!mat.textures.empty() || c != glm::vec4(-1)) {
+            const std::string png = mat.textures.empty() ? "" :
+                txd + mat.textures[0].name + ".png";
+            printf("\"pbrMetallicRoughness\": {");
+            if (exists(png)) {
+                printf("\"baseColorTexture\": {\"index\": {\"source\": ");
+                printf("{\"uri\": \"%s\"}", png.c_str());
                 printf(", \"sampler\": ");
                 cat(txd + mat.textures[0].name + ".json");
-                printf("}}}, \"alphaMode\": \"");
+                printf("}}");
+            } else if (!png.empty()) {
+                fprintf(stderr, "Warning: missing texture %s\n", png.c_str());
+            }
+            if (c != glm::vec4(-1)) {
+                if (exists(png)) printf(",");
+                printf("\"baseColorFactor\": [%g,%g,%g,%g]", c.r,c.g,c.b,c.a);
+            }
+            printf("}, ");
+            if (c != glm::vec4(-1) && c.a < 1) {
+                printf("\"alphaMode\": \"BLEND\", ");
+            } else if (exists(png)) {
+                printf("\"alphaMode\": \"");
                 cat(txd + mat.textures[0].name + ".txt");
                 printf("\", ");
             }
-        }
-        if ((geom->flags & RW::BSGeometry::ModuleMaterialColor) ==
-                RW::BSGeometry::ModuleMaterialColor) {
-            glm::vec4 c = glm::vec4(mat.colour) / 255.0f;
-            printf("\"pbrMetallicRoughness\": {\"baseColorFactor\": [%g,%g,%g,%g]}, ", c.r,c.g,c.b,c.a);
         }
         printf("\"doubleSided\": true}");
         printf("}\n");
