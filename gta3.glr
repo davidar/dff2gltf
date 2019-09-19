@@ -1,0 +1,26 @@
+{
+  "asset": {
+    "generator": "dff2gltf",
+    "version": "2.0"
+  },
+  "scene": {
+    "name": "gta3",
+    "nodes": [{
+      "rotation": [0.5,0.5,0.5,-0.5],
+      "children": [
+        { "$ref": "comnbtm.glr" },
+        { "$ref": "comntop.glr" },
+        { "$ref": "comse.glr" },
+        { "$ref": "comsw.glr" },
+        { "$ref": "industne.glr" },
+        { "$ref": "industnw.glr" },
+        { "$ref": "industse.glr" },
+        { "$ref": "industsw.glr" },
+        { "$ref": "landne.glr" },
+        { "$ref": "landsw.glr" },
+        { "$ref": "overview.glr" },
+        { "$ref": "props.glr" }
+      ]
+    }]
+  }
+}
