@@ -530,8 +530,9 @@ void printAtomic(const AtomicPtr &atomic, std::string modelName) {
             const std::string png = mat.textures.empty() ? "" :
                 txd + mat.textures[0].name + ".png";
             printf("\"pbrMetallicRoughness\": {");
+            printf("\"metallicFactor\": 0");
             if (exists(png)) {
-                printf("\"baseColorTexture\": {\"index\": {\"source\": ");
+                printf(", \"baseColorTexture\": {\"index\": {\"source\": ");
                 printf("{\"uri\": \"%s\"}", png.c_str());
                 printf(", \"sampler\": ");
                 cat(txd + mat.textures[0].name + ".json");
@@ -540,17 +541,17 @@ void printAtomic(const AtomicPtr &atomic, std::string modelName) {
                 fprintf(stderr, "Warning: missing texture %s\n", png.c_str());
             }
             if (c != glm::vec4(-1)) {
-                if (exists(png)) printf(",");
-                printf("\"baseColorFactor\": [%g,%g,%g,%g]", c.r,c.g,c.b,c.a);
+                printf(", \"baseColorFactor\": [%g,%g,%g,%g]", c.r,c.g,c.b,c.a);
             }
-            printf("}, ");
+            printf("}");
             if (c != glm::vec4(-1) && c.a < 1) {
-                printf("\"alphaMode\": \"BLEND\", ");
+                printf(", \"alphaMode\": \"BLEND\"");
             } else if (exists(png)) {
-                printf("\"alphaMode\": \"");
+                printf(", \"alphaMode\": \"");
                 cat(txd + mat.textures[0].name + ".txt");
-                printf("\", ");
+                printf("\"");
             }
+            printf(", ");
         }
         printf("\"doubleSided\": true}");
         printf("}\n");

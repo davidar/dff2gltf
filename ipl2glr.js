@@ -20,7 +20,7 @@ for (const s of ipl) {
     const pos = [Number(posX), Number(posY), Number(posZ)]
     const scale = [Number(scaleX), Number(scaleY), Number(scaleZ)]
     const rot = [Number(rotX), Number(rotY), Number(rotZ), Number(rotW)]
-    nodes.push({ $ref: model + '.glr', name: 'inst' + id,
+    nodes.push({ $ref: model + '.glr', name: model + '.' + id,
       translation: pos, rotation: rot, scale: scale })
   }
 }
@@ -30,4 +30,4 @@ let model = {
   scene: { name, nodes }
 }
 
-console.log(JSON.stringify(model, null, 2))
+fs.writeFileSync(name + '.glr', JSON.stringify(model, null, 2))

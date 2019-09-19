@@ -78,23 +78,34 @@ function plural(word) {
 
 function push_unique(arr, elt) {
     for (let i = 0; i < arr.length; i++) {
-      if (JSON.stringify(arr[i]) === JSON.stringify(elt)) {
-        return i
-      }
+      if (arr[i] === elt) return i
     }
     return arr.push(elt) - 1
 }
 
 function lift(obj, type) {
   if (type === 'node' && obj.hasOwnProperty('$ref')) {
+    console.error('Loading', obj['$ref'])
     const ext = JSON.parse(fs.readFileSync(obj['$ref']).toString())
-    obj = Object.assign(ext.scene.nodes[0], obj)
+    delete obj['$ref']
+    if (ext.scene.nodes.length == 1) {
+      obj = Object.assign(ext.scene.nodes[0], obj)
+    } else {
+      if (!obj.name) obj.name = ext.scene.name
+      obj.children = ext.scene.nodes
+    }
   }
   if (typeof type === 'string' || type instanceof String) {
     const types = plural(type)
     if (!model.hasOwnProperty(types)) model[types] = []
     if (schemas.hasOwnProperty(type)) lift(obj, schemas[type])
-    return push_unique(model[types], obj)
+    if (type === 'node') {
+      if (obj.hasOwnProperty('children') && obj.children.length == 0) {
+        delete obj.children
+      }
+      return model[types].push(JSON.stringify(obj)) - 1
+    }
+    return push_unique(model[types], JSON.stringify(obj))
   } else if (Array.isArray(type)) {
     for (let i = 0; i < obj.length; i++) {
       obj[i] = lift(obj[i], type[0])
@@ -116,4 +127,9 @@ function lift(obj, type) {
 }
 
 model.scene = lift(model.scene, 'scene')
+for (key in model) {
+  if (Array.isArray(model[key])) {
+    model[key] = model[key].map(JSON.parse)
+  }
+}
 console.log(JSON.stringify(model, null, 2))
