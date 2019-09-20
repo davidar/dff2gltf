@@ -98,11 +98,17 @@ function lift(obj, type) {
   if (typeof type === 'string' || type instanceof String) {
     const types = plural(type)
     if (!model.hasOwnProperty(types)) model[types] = []
+    if (obj.hasOwnProperty('children')) {
+      if (obj.children.length == 0) {
+        delete obj.children
+      } else if (obj.children.length == 1) {
+        let child = obj.children[0]
+        delete obj.children
+        obj = Object.assign(child, obj)
+      }
+    }
     if (schemas.hasOwnProperty(type)) lift(obj, schemas[type])
     if (type === 'node') {
-      if (obj.hasOwnProperty('children') && obj.children.length == 0) {
-        delete obj.children
-      }
       return model[types].push(JSON.stringify(obj)) - 1
     }
     return push_unique(model[types], JSON.stringify(obj))

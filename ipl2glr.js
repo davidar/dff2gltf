@@ -27,7 +27,9 @@ for (const s of ipl) {
 
 let model = {
   asset: { generator: 'dff2gltf', version: '2.0' },
-  scene: { name, nodes }
+  scene: { nodes: [{
+    name: name, children: nodes, rotation: [0.5,0.5,0.5,-0.5]
+  }] }
 }
 
 fs.writeFileSync(name + '.glr', JSON.stringify(model, null, 2))
