@@ -3,6 +3,7 @@
 
 const fs = require('fs')
 const path = require('path')
+const child_process = require('child_process')
 
 function read(fname, cb) {
   const lines = fs.readFileSync(fname).toString().split('\n')
@@ -20,36 +21,54 @@ function read(fname, cb) {
   }
 }
 
+let img = {}
+
+for (const fname of fs.readdirSync('img')) {
+  img[fname.toLowerCase()] = 'img/' + fname
+}
+
+let txd = {}
 let lod = new Set()
 
+const fname = process.argv[2]
+const name = path.basename(fname.toLowerCase(), '.ipl')
+
+let ides = [fname.match(/.*\/maps\//) + 'gta3.IDE']
 if (process.argv.length > 3) {
-  read(process.argv[3], (section, line) => {
-    if (section === 'objs') {
+  ides.push(process.argv[3])
+}
+for (const ide of ides) {
+  read(ide, (section, line) => {
+    if (section === 'objs' || section === 'tobj') {
       const row = line.split(', ')
       const id = row[0]
       const model = row[1]
-      const txd = row[2]
+      txd[model] = row[2]
       const dist = (row.length > 5) ? row[4] : row[3]
-      const flags = row[row.length-1]
+      const flags = (section === 'tobj') ? row[row.length-3] : row[row.length-1]
       if (dist >= 300) lod.add(id)
     }
   })
 }
 
-const fname = process.argv[2]
-const ipl = fs.readFileSync(fname).toString().split('\n')
-const name = path.basename(fname.toLowerCase(), '.ipl')
-
+let glr = {}
 let nodes = []
 read(fname, (section, line) => {
   if (section === 'inst') {
     const [id, model, posX, posY, posZ, scaleX, scaleY, scaleZ, rotX, rotY, rotZ, rotW] = line.split(', ')
-    const pos = [Number(posX), Number(posY), Number(posZ)]
-    const scale = [Number(scaleX), Number(scaleY), Number(scaleZ)]
-    const rot = [Number(rotX), Number(rotY), Number(rotZ), -Number(rotW)]
     if (lod.has(id)) return
-    nodes.push({ $ref: 'glr/' + model + '.glr', name: model + '.' + id,
-      translation: pos, rotation: rot, scale: scale })
+    if (!glr[model]) {
+      const dff = img[model + '.dff']
+      const tex = img[txd[model] + '.txd']
+      console.log(model, txd[model])
+      glr[model] = child_process.execFileSync('dff2glr', [dff, tex])
+    }
+    let node = JSON.parse(glr[model]).scene.nodes[0]
+    node.name = model + '.' + id,
+    node.translation = [Number(posX), Number(posY), Number(posZ)]
+    node.rotation = [Number(rotX), Number(rotY), Number(rotZ), -Number(rotW)]
+    node.scale = [Number(scaleX), Number(scaleY), Number(scaleZ)]
+    nodes.push(node)
   }
 })
 

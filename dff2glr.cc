@@ -10,9 +10,10 @@
 #include <boost/range/adaptors.hpp>
 #include <glm/glm.hpp>
 
+#include "base64.h"
 #include "Clump.hpp"
 #include "RWBinaryStream.hpp"
-
+#include "txd.h"
 #include "util.h"
 
 FrameList readFrameList(const RWBStream& stream);
@@ -479,7 +480,7 @@ void printAttribute(int i, const AtomicPtr &atomic, std::string prefix) {
     printf("}\n");
 }
 
-void printAtomic(const AtomicPtr &atomic, std::string prefix) {
+void printAtomic(const AtomicPtr &atomic, std::string prefix, const std::vector<Texture> &textures) {
     auto &geom = atomic->getGeometry();
     auto &name = atomic->getFrame()->getName();
     if (!prefix.empty()) prefix = prefix + ".";
@@ -494,7 +495,6 @@ void printAtomic(const AtomicPtr &atomic, std::string prefix) {
     }
     fclose(bin);
 
-    const std::string txd = "txd/";
 
     printf("{\"name\": \"%s\", \"mesh\": {\"primitives\": [\n", name.c_str());
     for (auto const &sg : geom->subgeom) {
@@ -528,18 +528,29 @@ void printAtomic(const AtomicPtr &atomic, std::string prefix) {
         }
         printf(", \"material\": {");
         if (!mat.textures.empty() || c != glm::vec4(-1)) {
-            const std::string png = mat.textures.empty() ? "" :
-                txd + mat.textures[0].name + ".png";
+            const Texture *texture = NULL;
+            for (int i = 0; i < textures.size(); i++) {
+                if (!mat.textures.empty() && textures[i].name == mat.textures[0].name) {
+                    texture = &textures[i];
+                    break;
+                }
+            }
             printf("\"pbrMetallicRoughness\": {");
             printf("\"metallicFactor\": 0");
-            if (exists(png)) {
+            if (texture) {
                 printf(", \"baseColorTexture\": {\"index\": {\"source\": ");
-                printf("{\"uri\": \"%s\"}", png.c_str());
+                auto uri = "data:image/png;base64," +
+                        base64_encode(texture->png.data(), texture->png.size());
+                printf("{\"name\": \"%s\", \"uri\": \"%s\"}",
+                        texture->name.c_str(), uri.c_str());
                 printf(", \"sampler\": ");
-                cat(txd + mat.textures[0].name + ".json");
+                printf("{\"minFilter\": %d, \"magFilter\": %d, ",
+                        texture->minFilter, texture->magFilter);
+                printf("\"wrapS\": %d, \"wrapT\": %d}\n",
+                        texture->wrapS, texture->wrapT);
                 printf("}}");
-            } else if (!png.empty()) {
-                fprintf(stderr, "Warning: missing texture %s\n", png.c_str());
+            } else if (!mat.textures.empty()) {
+                fprintf(stderr, "Warning: missing texture %s\n", mat.textures[0].name.c_str());
             }
             if (c != glm::vec4(-1)) {
                 printf(", \"baseColorFactor\": [%g,%g,%g,%g]", c.r,c.g,c.b,c.a);
@@ -547,10 +558,8 @@ void printAtomic(const AtomicPtr &atomic, std::string prefix) {
             printf("}");
             if (c != glm::vec4(-1) && c.a < 1) {
                 printf(", \"alphaMode\": \"BLEND\"");
-            } else if (exists(png)) {
-                printf(", \"alphaMode\": \"");
-                cat(txd + mat.textures[0].name + ".txt");
-                printf("\"");
+            } else if (texture) {
+                printf(", \"alphaMode\": \"%s\"", texture->transparent ? "BLEND" : "OPAQUE");
             }
             printf(", ");
         }
@@ -561,7 +570,7 @@ void printAtomic(const AtomicPtr &atomic, std::string prefix) {
     printf("]}}");
 }
 
-void load(const std::string &fname) {
+void load(const std::string &fname, const std::vector<Texture> &textures) {
     std::vector<char> data;
     readfile(fname, data);
     if (!data.size()) throw "Empty file";
@@ -615,7 +624,7 @@ void load(const std::string &fname) {
                     throw "Failed to read atomic";
                 }
                 model->addAtomic(atomic);
-                printAtomic(atomic, modelName);
+                printAtomic(atomic, modelName, textures);
             } break;
             default:
                 break;
@@ -636,8 +645,12 @@ void load(const std::string &fname) {
 
 int main(int argc, char **argv) {
     std::string fname(argv[1]);
+    std::string txd(argv[2]);
     try {
-        load(fname);
+        std::vector<char> txdata;
+        readfile(txd, txdata);
+        auto textures = loadTXD(txdata);
+        load(fname, textures);
     } catch (const std::string &s) {
         fprintf(stderr, "Error: %s\n", s.c_str());
     } catch (const char *s) {

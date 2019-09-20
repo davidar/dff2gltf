@@ -1,3 +1,6 @@
 [submodule "lodepng"]
 	path = lodepng
 	url = https://github.com/lvandeve/lodepng.git
+[submodule "cpp-base64"]
+	path = cpp-base64
+	url = https://github.com/ReneNyffenegger/cpp-base64.git
