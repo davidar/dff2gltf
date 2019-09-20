@@ -9,18 +9,16 @@ dff2glr: dff2glr.o Clump.o
 GTA3 = $(HOME)/.steam/steam/steamapps/common/Grand\ Theft\ Auto\ 3
 
 IPL = \
-	$(GTA3)/data/maps/comnbtm/comNbtm.ipl \
-	$(GTA3)/data/maps/comntop/comNtop.ipl \
-	$(GTA3)/data/maps/comse/comSE.ipl \
-	$(GTA3)/data/maps/comsw/comSW.ipl \
-	$(GTA3)/data/maps/industne/industNE.ipl \
-	$(GTA3)/data/maps/industnw/industNW.ipl \
-	$(GTA3)/data/maps/industse/industSE.ipl \
-	$(GTA3)/data/maps/industsw/industSW.ipl \
-	$(GTA3)/data/maps/landne/landne.ipl \
-	$(GTA3)/data/maps/landsw/landsw.ipl \
-	$(GTA3)/data/maps/overview.ipl \
-	$(GTA3)/data/maps/props.IPL
+	$(GTA3)/data/maps/comnbtm/comNbtm \
+	$(GTA3)/data/maps/comntop/comNtop \
+	$(GTA3)/data/maps/comse/comSE \
+	$(GTA3)/data/maps/comsw/comSW \
+	$(GTA3)/data/maps/industne/industNE \
+	$(GTA3)/data/maps/industnw/industNW \
+	$(GTA3)/data/maps/industse/industSE \
+	$(GTA3)/data/maps/industsw/industSW \
+	$(GTA3)/data/maps/landne/landne \
+	$(GTA3)/data/maps/landsw/landsw
 
 img: img2files
 	mkdir -p img
@@ -40,14 +38,18 @@ glr: txd dff2glr
 ipl: glr ipl2glr.js
 	mkdir -p ipl
 	ln -svf ../txd ../buf ../glr ipl
-	cd ipl && for f in $(IPL); do echo "$$f"; ../ipl2glr.js "$$f"; done
+	cd ipl && for f in $(IPL); do echo "$$f"; ../ipl2glr.js "$$f.ipl" "`dirname "$$f"`/`basename "$$f" | tr A-Z a-z`.ide"; done
+	cd ipl && ../ipl2glr.js $(GTA3)/data/maps/overview.ipl && ../ipl2glr.js $(GTA3)/data/maps/props.IPL
 	touch ipl
 
 ipl/%.gltf: ipl
 	cd ipl && ../glr2gltf.js < $*.glr > $*.gltf
 
 gta3.gltf: gta3.glr ipl glr2gltf.js
-	./glr2gltf.js < gta3.glr > gta3.gltf
+	./glr2gltf.js < gta3.glr > $@
+
+gta3-overview.gltf: ipl glr2gltf.js
+	./glr2gltf.js < ipl/overview.glr > $@
 
 %.glb: %.gltf
 	gltf-pipeline -i $< -o $@

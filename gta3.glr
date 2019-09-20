@@ -5,9 +5,7 @@
   },
   "scene": {
     "name": "gta3",
-    "nodes": [{
-      "rotation": [0.5,0.5,0.5,-0.5],
-      "children": [
+    "nodes": [
         { "$ref": "ipl/comnbtm.glr" },
         { "$ref": "ipl/comntop.glr" },
         { "$ref": "ipl/comse.glr" },
@@ -18,9 +16,7 @@
         { "$ref": "ipl/industsw.glr" },
         { "$ref": "ipl/landne.glr" },
         { "$ref": "ipl/landsw.glr" },
-        { "$ref": "ipl/overview.glr" },
         { "$ref": "ipl/props.glr" }
-      ]
-    }]
+    ]
   }
 }
