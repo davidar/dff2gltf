@@ -28,7 +28,6 @@ for (const fname of fs.readdirSync('img')) {
 }
 
 let txd = {}
-let lod = new Set()
 
 const fname = process.argv[2]
 const name = path.basename(fname.toLowerCase(), '.ipl')
@@ -46,7 +45,6 @@ for (const ide of ides) {
       txd[model] = row[2]
       const dist = (row.length > 5) ? row[4] : row[3]
       const flags = (section === 'tobj') ? row[row.length-3] : row[row.length-1]
-      if (dist >= 300) lod.add(id)
     }
   })
 }
@@ -56,7 +54,7 @@ let nodes = []
 read(fname, (section, line) => {
   if (section === 'inst') {
     const [id, model, posX, posY, posZ, scaleX, scaleY, scaleZ, rotX, rotY, rotZ, rotW] = line.split(', ')
-    if (lod.has(id)) return
+    if (model.startsWith('lod')) return
     if (!glr[model]) {
       const dff = img[model + '.dff']
       const tex = img[txd[model] + '.txd']
