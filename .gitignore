@@ -4,9 +4,7 @@ txd2png
 dff2glr
 *.bin
 /img/
-/txd/
-/gltf/
-/glr/
+/ipl/
 
 # Prerequisites
 *.d

@@ -485,6 +485,7 @@ void printAtomic(const AtomicPtr &atomic, std::string prefix, const std::vector<
     auto &name = atomic->getFrame()->getName();
     if (!prefix.empty()) prefix = prefix + ".";
     prefix = "buf/" + prefix;
+
     FILE* bin = fopen((prefix + name + ".attributes.bin").c_str(), "wb");
     fwrite(geom->verts.data(), sizeof(GeometryVertex), geom->verts.size(), bin);
     fclose(bin);
@@ -494,7 +495,6 @@ void printAtomic(const AtomicPtr &atomic, std::string prefix, const std::vector<
         fwrite(sg.indices.data(), sizeof(uint32_t), sg.numIndices, bin);
     }
     fclose(bin);
-
 
     printf("{\"name\": \"%s\", \"mesh\": {\"primitives\": [\n", name.c_str());
     for (auto const &sg : geom->subgeom) {
