@@ -19,7 +19,7 @@ for (const s of ipl) {
     const [id, model, posX, posY, posZ, scaleX, scaleY, scaleZ, rotX, rotY, rotZ, rotW] = line.split(', ')
     const pos = [Number(posX), Number(posY), Number(posZ)]
     const scale = [Number(scaleX), Number(scaleY), Number(scaleZ)]
-    const rot = [Number(rotX), Number(rotY), Number(rotZ), Number(rotW)]
+    const rot = [Number(rotX), Number(rotY), Number(rotZ), -Number(rotW)]
     nodes.push({ $ref: 'glr/' + model + '.glr', name: model + '.' + id,
       translation: pos, rotation: rot, scale: scale })
   }
