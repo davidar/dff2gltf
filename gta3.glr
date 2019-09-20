@@ -8,18 +8,18 @@
     "nodes": [{
       "rotation": [0.5,0.5,0.5,-0.5],
       "children": [
-        { "$ref": "comnbtm.glr" },
-        { "$ref": "comntop.glr" },
-        { "$ref": "comse.glr" },
-        { "$ref": "comsw.glr" },
-        { "$ref": "industne.glr" },
-        { "$ref": "industnw.glr" },
-        { "$ref": "industse.glr" },
-        { "$ref": "industsw.glr" },
-        { "$ref": "landne.glr" },
-        { "$ref": "landsw.glr" },
-        { "$ref": "overview.glr" },
-        { "$ref": "props.glr" }
+        { "$ref": "ipl/comnbtm.glr" },
+        { "$ref": "ipl/comntop.glr" },
+        { "$ref": "ipl/comse.glr" },
+        { "$ref": "ipl/comsw.glr" },
+        { "$ref": "ipl/industne.glr" },
+        { "$ref": "ipl/industnw.glr" },
+        { "$ref": "ipl/industse.glr" },
+        { "$ref": "ipl/industsw.glr" },
+        { "$ref": "ipl/landne.glr" },
+        { "$ref": "ipl/landsw.glr" },
+        { "$ref": "ipl/overview.glr" },
+        { "$ref": "ipl/props.glr" }
       ]
     }]
   }

@@ -31,19 +31,23 @@ txd: img txd2png
 	cd txd && ls ../img/*.txd ../img/*.TXD | xargs -tn1 ../txd2png && cd ..
 	touch txd
 
-gltf: txd dff2glr
-	mkdir -p gltf
-	ln -svf ../txd gltf
-	cd gltf && ls ../img/*.dff ../img/*.DFF | xargs -tn1 ../dff2gltf && cd ..
-
 glr: txd dff2glr
-	mkdir -p glr
-	ln -svf ../txd glr
+	mkdir -p glr buf
+	ln -svf ../txd ../buf glr
 	cd glr && ls ../img/*.dff ../img/*.DFF | xargs -tn1 ../dff2glr.sh
-	cd glr && for f in $(IPL); do echo "$$f"; ../ipl2glr.js "$$f"; done
+	touch glr
 
-gta3.gltf: gta3.glr glr
-	cd glr && ../glr2gltf.js < ../gta3.glr > ../gta3.gltf
+ipl: glr ipl2glr.js
+	mkdir -p ipl
+	ln -svf ../txd ../buf ../glr ipl
+	cd ipl && for f in $(IPL); do echo "$$f"; ../ipl2glr.js "$$f"; done
+	touch ipl
 
-gta3.glb: gta3.gltf
-	cd glr && cp -f ../gta3.gltf . && gltf-pipeline -i gta3.gltf -o ../gta3.glb && rm -f gta3.gltf
+ipl/%.gltf: ipl
+	cd ipl && ../glr2gltf.js < $*.glr > $*.gltf
+
+gta3.gltf: gta3.glr ipl glr2gltf.js
+	./glr2gltf.js < gta3.glr > gta3.gltf
+
+%.glb: %.gltf
+	gltf-pipeline -i $< -o $@

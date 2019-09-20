@@ -20,7 +20,7 @@ for (const s of ipl) {
     const pos = [Number(posX), Number(posY), Number(posZ)]
     const scale = [Number(scaleX), Number(scaleY), Number(scaleZ)]
     const rot = [Number(rotX), Number(rotY), Number(rotZ), Number(rotW)]
-    nodes.push({ $ref: model + '.glr', name: model + '.' + id,
+    nodes.push({ $ref: 'glr/' + model + '.glr', name: model + '.' + id,
       translation: pos, rotation: rot, scale: scale })
   }
 }

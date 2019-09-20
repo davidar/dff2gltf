@@ -450,7 +450,7 @@ AtomicPtr readAtomic(FrameList &framelist,
     return atomic;
 }
 
-void printAttribute(int i, const AtomicPtr &atomic, std::string modelName) {
+void printAttribute(int i, const AtomicPtr &atomic, std::string prefix) {
     auto &geom = atomic->getGeometry();
     auto &name = atomic->getFrame()->getName();
     glm::vec3 minPos = std::accumulate(
@@ -463,7 +463,7 @@ void printAttribute(int i, const AtomicPtr &atomic, std::string modelName) {
     printf("{\"bufferView\": {\"buffer\": ");
     size_t attrLength = sizeof(GeometryVertex) * geom->verts.size();
     printf("{\"uri\": \"%s.attributes.bin\", \"byteLength\": %lu}",
-            (modelName + name).c_str(), attrLength);
+            (prefix + name).c_str(), attrLength);
     printf(", \"target\": %d, \"byteLength\": %lu, \"byteStride\": %lu}\n",
             GL_ARRAY_BUFFER, attrLength, sizeof(GeometryVertex));
 
@@ -479,15 +479,16 @@ void printAttribute(int i, const AtomicPtr &atomic, std::string modelName) {
     printf("}\n");
 }
 
-void printAtomic(const AtomicPtr &atomic, std::string modelName) {
+void printAtomic(const AtomicPtr &atomic, std::string prefix) {
     auto &geom = atomic->getGeometry();
     auto &name = atomic->getFrame()->getName();
-    if (!modelName.empty()) modelName = modelName + ".";
-    FILE* bin = fopen((modelName + name + ".attributes.bin").c_str(), "wb");
+    if (!prefix.empty()) prefix = prefix + ".";
+    prefix = "buf/" + prefix;
+    FILE* bin = fopen((prefix + name + ".attributes.bin").c_str(), "wb");
     fwrite(geom->verts.data(), sizeof(GeometryVertex), geom->verts.size(), bin);
     fclose(bin);
 
-    bin = fopen((modelName + name + ".indices.bin").c_str(), "wb");
+    bin = fopen((prefix + name + ".indices.bin").c_str(), "wb");
     for (auto &sg : geom->subgeom) {
         fwrite(sg.indices.data(), sizeof(uint32_t), sg.numIndices, bin);
     }
@@ -500,20 +501,20 @@ void printAtomic(const AtomicPtr &atomic, std::string modelName) {
         printf("{\"mode\": %d", geom->facetype == Geometry::Triangles ? GL_TRIANGLES : GL_TRIANGLE_STRIP);
         printf(", \"attributes\": ");
         printf("{ \"POSITION\": ");
-        printAttribute(0, atomic, modelName);
+        printAttribute(0, atomic, prefix);
         printf(", \"NORMAL\": ");
-        printAttribute(1, atomic, modelName);
+        printAttribute(1, atomic, prefix);
         printf(", \"TEXCOORD_0\": ");
-        printAttribute(2, atomic, modelName);
+        printAttribute(2, atomic, prefix);
         printf(", \"COLOR_0\": ");
-        printAttribute(3, atomic, modelName);
+        printAttribute(3, atomic, prefix);
         printf("}");
         printf(", \"indices\": {\"bufferView\": {\"buffer\": ");
         size_t icount = std::accumulate(
             geom->subgeom.begin(), geom->subgeom.end(), size_t{0u},
             [](size_t a, const SubGeometry &b) { return a + b.numIndices; });
         printf("{\"uri\": \"%s.indices.bin\", \"byteLength\": %lu}",
-                (modelName + name).c_str(), sizeof(uint32_t) * icount);
+                (prefix + name).c_str(), sizeof(uint32_t) * icount);
         printf(", \"target\": %d, \"byteOffset\": %lu, \"byteLength\": %lu}\n",
                 GL_ELEMENT_ARRAY_BUFFER, sg.start * sizeof(uint32_t), sizeof(uint32_t) * sg.numIndices);
         printf(", \"type\": \"SCALAR\", \"componentType\": %d, \"count\": %lu}\n",
