@@ -1,9 +1,7 @@
 CC = clang++
 CXX = clang++
-DEBUG_FLAGS = -g -fsanitize=address
-CXXFLAGS = $(shell pkg-config --cflags Magick++) $(DEBUG_FLAGS)
-LDFLAGS = $(shell pkg-config --libs Magick++) $(DEBUG_FLAGS)
 
+txd2png: txd2png.o lodepng.o
 dff2glr: dff2glr.o Clump.o
 
 GTA3 = $(HOME)/.steam/steam/steamapps/common/Grand\ Theft\ Auto\ 3

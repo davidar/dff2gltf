@@ -8,8 +8,8 @@
 #include <vector>
 
 #include <GL/gl.h>
-#include <Magick++.h>
 
+#include "lodepng.h"
 #include "RWBinaryStream.hpp"
 #include "util.h"
 
@@ -31,7 +31,6 @@ void processPalette(uint32_t* fullColor, RW::BinaryStreamSection& rootSection) {
 }
 
 int main(int argc, char **argv) {
-    Magick::InitializeMagick(argv[0]);
     std::string fname(argv[1]);
 
     std::vector<char> data;
@@ -74,46 +73,51 @@ int main(int argc, char **argv) {
             break;
         }
 
-        Magick::Image texture;
+        std::vector<unsigned char> png;
 
         if (isPal8) {
             std::vector<uint32_t> fullColor(texNative.width * texNative.height);
 
             processPalette(fullColor.data(), rootSection);
 
-            texture.read(texNative.width, texNative.height,
-                    "RGBA", Magick::CharPixel, fullColor.data());
+            lodepng::encode(png, (unsigned char*)fullColor.data(), texNative.width, texNative.height);
         } else if (isFulc) {
             auto coldata = rootSection.raw() + sizeof(RW::BSTextureNative);
             coldata += sizeof(uint32_t);
 
-            std::string format = "RGBA";
+            bool bgra = false;
             switch (texNative.rasterformat) {
                 case RW::BSTextureNative::FORMAT_1555:
-                    format = "RGBA";
                     //type = GL_UNSIGNED_SHORT_1_5_5_5_REV;
                     printf("Warning: ignoring %s\n", name.c_str());
                     continue;
                     break;
                 case RW::BSTextureNative::FORMAT_8888:
-                    format = "BGRA";
+                    bgra = true;
                     // type = GL_UNSIGNED_INT_8_8_8_8_REV;
                     coldata += 8;
                     break;
                 case RW::BSTextureNative::FORMAT_888:
-                    format = "BGRA";
+                    bgra = true;
                     break;
                 default:
                     break;
             }
 
-            texture.read(texNative.width, texNative.height,
-                    format, Magick::CharPixel, coldata);
+            if (bgra) {
+                for (int i = 0; i < texNative.width * texNative.height; i++) {
+                    char b = coldata[4*i];
+                    coldata[4*i] = coldata[4*i+2];
+                    coldata[4*i+2] = b;
+                }
+            }
+
+            lodepng::encode(png, (unsigned char*)coldata, texNative.width, texNative.height);
         } else {
             return 1;
         }
 
-        texture.write(name + ".png"); 
+        lodepng::save_file(png, name + ".png");
 
         FILE* meta = fopen((name + ".txt").c_str(), "w");
         fprintf(meta, "%s", transparent ? "BLEND" : "OPAQUE");
