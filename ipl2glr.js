@@ -64,6 +64,14 @@ read(fname, (section, line) => {
       glr[model] = child_process.execFileSync('dff2glr', [dff, tex])
     }
     let node = JSON.parse(glr[model]).scene.nodes[0]
+    if (node.children && node.children.length > 1) {
+      for (const child of node.children) {
+        if (child.name.endsWith('_l0')) { // breakable objects
+          node = child
+          break
+        }
+      }
+    }
     node.name = model + '.' + id,
     node.translation = [Number(posX), Number(posY), Number(posZ)]
     node.rotation = [Number(rotX), Number(rotY), Number(rotZ), -Number(rotW)]
