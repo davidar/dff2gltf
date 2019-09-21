@@ -53,6 +53,7 @@ void readimg(const std::string &fname, const DirEntry &asset, std::vector<T> &ve
     if (fread(vec.data(), 2048, asset.size, fp) != asset.size) {
         printf("Error reading asset %s\n", asset.name);
     }
+    fclose(fp);
 #endif
 }
 

@@ -21,7 +21,10 @@ int main(int argc, char **argv) {
         readimg(imgPath, asset, raw_data);
 
         FILE* dumpFile = fopen(asset.name, "wb");
-        if (!dumpFile) return 1;
+        if (!dumpFile) {
+            fprintf(stderr, "Error: cannot open file %s\n", asset.name);
+            return 1;
+        }
 
         fwrite(raw_data.data(), 2048, asset.size, dumpFile);
         printf("Saved %s\n", asset.name);

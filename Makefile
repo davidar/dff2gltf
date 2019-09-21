@@ -32,6 +32,11 @@ IPL = \
 	$(GTA3)/data/maps/landne/landne \
 	$(GTA3)/data/maps/landsw/landsw
 
+img: img2files
+	mkdir -p img
+	cd img && ../img2files $(GTA3)/models/gta3 && cd ..
+	cp $(GTA3)/models/*.txd $(GTA3)/models/*.TXD img
+
 ipl: ipl2glr.js dff2glr
 	mkdir -p ipl
 	cd ipl && for f in $(IPL); do echo "$$f"; ../ipl2glr.js "$$f.ipl" "`dirname "$$f"`/`basename "$$f" | tr A-Z a-z`.ide"; done
