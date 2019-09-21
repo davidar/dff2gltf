@@ -27,17 +27,17 @@ inline Dest bit_cast(Source const &source) {
  * data relating to the parent chunk).
  */
 class RWBStream {
-    char* _data;
+    const char* _data;
     std::ptrdiff_t _size;
-    char* _dataCur;
-    char* _nextChunk;
+    const char* _dataCur;
+    const char* _nextChunk;
     std::uint32_t _chunkVersion;
     size_t _currChunkSz;
 
 public:
     typedef std::uint32_t ChunkID;
 
-    RWBStream(char* data, size_t size)
+    RWBStream(const char* data, size_t size)
         : _data(data), _size(size), _dataCur(data), _nextChunk(data) {
     }
 
@@ -65,7 +65,7 @@ public:
         return id;
     }
 
-    char* getCursor() const {
+    const char* getCursor() const {
         return _dataCur;
     }
 

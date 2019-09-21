@@ -1,6 +1,6 @@
+#include "io.h"
 #include "lodepng.h"
 #include "txd.h"
-#include "util.h"
 
 int main(int argc, char **argv) {
     std::string fname(argv[1]);
