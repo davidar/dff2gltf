@@ -26,8 +26,7 @@ IPL = \
 	$(GTA3)/data/maps/landsw/landsw
 
 ipl: ipl2glr.js dff2glr
-	mkdir -p ipl buf
-	ln -svf ../buf ipl
+	mkdir -p ipl
 	cd ipl && for f in $(IPL); do echo "$$f"; ../ipl2glr.js "$$f.ipl" "`dirname "$$f"`/`basename "$$f" | tr A-Z a-z`.ide"; done
 	cd ipl && ../ipl2glr.js $(GTA3)/data/maps/overview.ipl && ../ipl2glr.js $(GTA3)/data/maps/props.IPL
 	touch ipl

@@ -70,6 +70,8 @@ let contents = fs.readFileSync('/dev/stdin').toString()
 if (!contents) process.exit()
 
 let model = JSON.parse(contents)
+let named = model.named
+delete model.named
 
 function plural(word) {
   if (word === 'mesh') return word + 'es'
@@ -135,7 +137,11 @@ function lift(obj, type) {
 model.scene = lift(model.scene, 'scene')
 for (key in model) {
   if (Array.isArray(model[key])) {
-    model[key] = model[key].map(JSON.parse)
+    model[key] = model[key].map(s => {
+      let obj = JSON.parse(s)
+      if (named[obj.name]) obj = Object.assign(obj, named[obj.name])
+      return obj
+    })
   }
 }
 console.log(JSON.stringify(model, null, 2))

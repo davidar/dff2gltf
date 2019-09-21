@@ -45,6 +45,7 @@ for (const ide of ides) {
 
 let glr = {}
 let nodes = []
+let named = {}
 read(fname, (section, line) => {
   if (section === 'inst') {
     const [id, model, posX, posY, posZ, scaleX, scaleY, scaleZ, rotX, rotY, rotZ, rotW] = line.split(', ')
@@ -53,7 +54,9 @@ read(fname, (section, line) => {
       console.log(model, txd[model])
       glr[model] = child_process.execFileSync('dff2glr', [model, txd[model]])
     }
-    let node = JSON.parse(glr[model]).scene.nodes[0]
+    let obj = JSON.parse(glr[model])
+    named = Object.assign(named, obj.named)
+    let node = obj.scene.nodes[0]
     if (node.children && node.children.length > 1) {
       for (const child of node.children) {
         if (child.name.endsWith('_l0')) { // breakable objects
@@ -74,7 +77,8 @@ let model = {
   asset: { generator: 'dff2gltf', version: '2.0' },
   scene: { nodes: [{
     name: name, children: nodes, rotation: [0.5,0.5,0.5,-0.5]
-  }] }
+  }] },
+  named: named
 }
 
 fs.writeFileSync(name + '.glr', JSON.stringify(model, null, 2))

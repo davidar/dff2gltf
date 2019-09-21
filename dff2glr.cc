@@ -8,7 +8,7 @@
 #include "io.h"
 #include "txd.h"
 
-void printAttribute(int i, const AtomicPtr &atomic, std::string prefix) {
+void printAttribute(int i, const AtomicPtr &atomic) {
     auto &geom = atomic->getGeometry();
     auto &name = atomic->getFrame()->getName();
     glm::vec3 minPos = std::accumulate(
@@ -20,8 +20,7 @@ void printAttribute(int i, const AtomicPtr &atomic, std::string prefix) {
 
     printf("{\"bufferView\": {\"buffer\": ");
     size_t attrLength = sizeof(GeometryVertex) * geom->verts.size();
-    printf("{\"uri\": \"%s.attributes.bin\", \"byteLength\": %lu}",
-            (prefix + name).c_str(), attrLength);
+    printf("{\"name\": \"%s.attributes\"}", name.c_str());
     printf(", \"target\": %d, \"byteLength\": %lu, \"byteStride\": %lu}\n",
             GL_ARRAY_BUFFER, attrLength, sizeof(GeometryVertex));
 
@@ -37,45 +36,46 @@ void printAttribute(int i, const AtomicPtr &atomic, std::string prefix) {
     printf("}\n");
 }
 
-void printAtomic(const AtomicPtr &atomic, std::string prefix, const std::vector<Texture> &textures) {
+std::string printAtomic(const AtomicPtr &atomic, const std::vector<Texture> &textures) {
     auto &geom = atomic->getGeometry();
     auto &name = atomic->getFrame()->getName();
-    if (!prefix.empty()) prefix = prefix + ".";
-    prefix = "buf/" + prefix;
 
-    FILE* bin = fopen((prefix + name + ".attributes.bin").c_str(), "wb");
-    fwrite(geom->verts.data(), sizeof(GeometryVertex), geom->verts.size(), bin);
-    fclose(bin);
+    size_t attrLength = sizeof(GeometryVertex) * geom->verts.size();
+    std::string uriAttr = "data:application/gltf-buffer;base64," +
+        base64_encode((const unsigned char*)geom->verts.data(), attrLength);
+    std::string named = "\"" + name + ".attributes\": " +
+        "{\"uri\": \"" + uriAttr + "\", \"byteLength\": " + std::to_string(attrLength) + "}";
 
-    bin = fopen((prefix + name + ".indices.bin").c_str(), "wb");
+    std::vector<uint32_t> indices;
     for (auto &sg : geom->subgeom) {
-        fwrite(sg.indices.data(), sizeof(uint32_t), sg.numIndices, bin);
+        indices.insert(indices.end(), sg.indices.begin(), sg.indices.end());
     }
-    fclose(bin);
+    auto indicesLength = indices.size() * sizeof(uint32_t);
+    auto uriIndices = "data:application/gltf-buffer;base64," +
+        base64_encode((const unsigned char*)indices.data(), indicesLength);
+    named += ", \"" + name + ".indices\": " +
+        "{\"uri\": \"" + uriIndices + "\", \"byteLength\": " + std::to_string(indicesLength) + "}";
 
     printf("{\"name\": \"%s\", \"mesh\": {\"primitives\": [\n", name.c_str());
     for (auto const &sg : geom->subgeom) {
         printf("{\"mode\": %d", geom->facetype == Geometry::Triangles ? GL_TRIANGLES : GL_TRIANGLE_STRIP);
         printf(", \"attributes\": ");
         printf("{ \"POSITION\": ");
-        printAttribute(0, atomic, prefix);
+        printAttribute(0, atomic);
         printf(", \"NORMAL\": ");
-        printAttribute(1, atomic, prefix);
+        printAttribute(1, atomic);
         printf(", \"TEXCOORD_0\": ");
-        printAttribute(2, atomic, prefix);
+        printAttribute(2, atomic);
         printf(", \"COLOR_0\": ");
-        printAttribute(3, atomic, prefix);
+        printAttribute(3, atomic);
         printf("}");
         printf(", \"indices\": {\"bufferView\": {\"buffer\": ");
-        size_t icount = std::accumulate(
-            geom->subgeom.begin(), geom->subgeom.end(), size_t{0u},
-            [](size_t a, const SubGeometry &b) { return a + b.numIndices; });
-        printf("{\"uri\": \"%s.indices.bin\", \"byteLength\": %lu}",
-                (prefix + name).c_str(), sizeof(uint32_t) * icount);
+        printf("{\"name\": \"%s.indices\"}", name.c_str());
         printf(", \"target\": %d, \"byteOffset\": %lu, \"byteLength\": %lu}\n",
                 GL_ELEMENT_ARRAY_BUFFER, sg.start * sizeof(uint32_t), sizeof(uint32_t) * sg.numIndices);
         printf(", \"type\": \"SCALAR\", \"componentType\": %d, \"count\": %lu}\n",
                 GL_UNSIGNED_INT, sg.numIndices);
+
         int matIndex = sg.material;
         auto const &mat = geom->materials[matIndex];
         glm::vec4 c(-1);
@@ -125,26 +125,28 @@ void printAtomic(const AtomicPtr &atomic, std::string prefix, const std::vector<
         if (&sg != &geom->subgeom.back()) printf(",");
     }
     printf("]}}");
+
+    return named;
 }
 
 void printModel(const ClumpPtr model, const std::vector<Texture> &textures) {
-    auto modelName = model->getFrame() ? model->getFrame()->getName() : "";
-
     printf("{\"asset\": {\"generator\": \"dff2gltf\", \"version\": \"2.0\"},\n");
     printf("\"scene\": {\"nodes\": [{\"children\": [");
-
+    std::string named = "";
     for (auto const &atomic : model->getAtomics()) {
-        printAtomic(atomic, modelName, textures);
-        if (&atomic != &model->getAtomics().back()) printf(",");
+        named += printAtomic(atomic, textures);
+        if (&atomic != &model->getAtomics().back()) {
+            printf(",");
+            named += ",";
+        }
     }
-
     printf("]");
-
-    if (!modelName.empty()) {
-        printf(", \"name\": \"%s\"", modelName.c_str());
+    if (model->getFrame()) {
+        printf(", \"name\": \"%s\"", model->getFrame()->getName().c_str());
     }
-
-    printf(", \"rotation\": [-0.5,0.5,0.5,0.5]}]}}\n");
+    printf(", \"rotation\": [-0.5,0.5,0.5,0.5]}]}");
+    printf(", \"named\": {%s}", named.c_str());
+    printf("}\n");
 }
 
 int main(int argc, char **argv) {
