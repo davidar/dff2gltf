@@ -15,12 +15,10 @@ int main(int argc, char **argv) {
     readfile(dirPath, assets);
 
     auto imgPath = basename + ".img";
-    FILE* fp = fopen(imgPath.c_str(), "rb");
-    if (!fp) return 1;
 
     for (auto &asset : assets) {
         std::vector<char> raw_data;
-        readimg(fp, asset, raw_data);
+        readimg(imgPath, asset, raw_data);
 
         FILE* dumpFile = fopen(asset.name, "wb");
         if (!dumpFile) return 1;
@@ -30,6 +28,4 @@ int main(int argc, char **argv) {
 
         fclose(dumpFile);
     }
-
-    fclose(fp);
 }

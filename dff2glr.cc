@@ -153,19 +153,21 @@ int main(int argc, char **argv) {
     std::string dff(argv[1]);
     std::string txd(argv[2]);
     try {
+#ifdef __EMSCRIPTEN__
+        std::string gta3 = "/data";
+#else
         std::string gta3 = getenv("GTA3");
+#endif
         gta3.erase(std::remove(gta3.begin(), gta3.end(), '\\'), gta3.end());
         auto dirPath = gta3 + "/models/gta3.dir";
         std::vector<DirEntry> assets;
         readfile(dirPath, assets);
 
         auto imgPath = gta3 + "/models/gta3.img";
-        FILE* fp = fopen(imgPath.c_str(), "rb");
-        if (!fp) throw "can't open IMG";
 
         std::vector<char> data;
         auto asset = findentry(assets, dff + ".dff");
-        readimg(fp, asset, data);
+        readimg(imgPath, asset, data);
         auto model = loadDFF(data);
 
         std::vector<char> txdata;
@@ -173,11 +175,10 @@ int main(int argc, char **argv) {
             readfile(gta3 + "/models/generic.txd", txdata);
         } else {
             auto asset = findentry(assets, txd + ".txd");
-            readimg(fp, asset, txdata);
+            readimg(imgPath, asset, txdata);
         }
         auto textures = loadTXD(txdata);
 
-        fclose(fp);
         printModel(model, textures);
     } catch (const std::string &s) {
         fprintf(stderr, "Error: %s\n", s.c_str());

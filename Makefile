@@ -1,14 +1,18 @@
 CC = clang++
 CXX = clang++
 CXXFLAGS = -Iglm -std=c++14 -Werror
-EMFLAGS = -s DISABLE_EXCEPTION_CATCHING=0 -s DEMANGLE_SUPPORT=1
+EMFLAGS = -s DISABLE_EXCEPTION_CATCHING=0 -s DEMANGLE_SUPPORT=1 -s FETCH=1 --proxy-to-worker
 export PATH := $(PWD):$(PATH)
 
 all: img2files txd2png dff2glr
 txd2png: txd2png.o txd.o lodepng.o
 dff2glr: dff2glr.o dff.o Clump.o txd.o lodepng.o base64.o
 
-dff2glr.js: dff2glr.cc dff.cc Clump.cpp txd.cc lodepng.cpp base64.cpp
+data:
+	mkdir -p data/models
+	cp $(GTA3)/models/gta3.dir $(GTA3)/models/gta3.img data/models
+
+dff2glr.html: dff2glr.cc dff.cc Clump.cpp txd.cc lodepng.cpp base64.cpp
 	em++ $(CXXFLAGS) $(EMFLAGS) $^ -o $@
 
 export GTA3 = $(HOME)/.steam/steam/steamapps/common/Grand\ Theft\ Auto\ 3
