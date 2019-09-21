@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <numeric>
 
 #include <glm/glm.hpp>
@@ -126,10 +127,7 @@ void printAtomic(const AtomicPtr &atomic, std::string prefix, const std::vector<
     printf("]}}");
 }
 
-void load(const std::string &fname, const std::vector<Texture> &textures) {
-    std::vector<char> data;
-    readfile(fname, data);
-    auto model = loadDFF(data);
+void printModel(const ClumpPtr model, const std::vector<Texture> &textures) {
     auto modelName = model->getFrame() ? model->getFrame()->getName() : "";
 
     printf("{\"asset\": {\"generator\": \"dff2gltf\", \"version\": \"2.0\"},\n");
@@ -150,13 +148,35 @@ void load(const std::string &fname, const std::vector<Texture> &textures) {
 }
 
 int main(int argc, char **argv) {
-    std::string fname(argv[1]);
+    std::string dff(argv[1]);
     std::string txd(argv[2]);
     try {
+        std::string gta3 = getenv("GTA3");
+        gta3.erase(std::remove(gta3.begin(), gta3.end(), '\\'), gta3.end());
+        auto dirPath = gta3 + "/models/gta3.dir";
+        std::vector<DirEntry> assets;
+        readfile(dirPath, assets);
+
+        auto imgPath = gta3 + "/models/gta3.img";
+        FILE* fp = fopen(imgPath.c_str(), "rb");
+        if (!fp) throw "can't open IMG";
+
+        std::vector<char> data;
+        auto asset = findentry(assets, dff + ".dff");
+        readimg(fp, asset, data);
+        auto model = loadDFF(data);
+
         std::vector<char> txdata;
-        readfile(txd, txdata);
+        if (txd == "generic") {
+            readfile(gta3 + "/models/generic.txd", txdata);
+        } else {
+            auto asset = findentry(assets, txd + ".txd");
+            readimg(fp, asset, txdata);
+        }
         auto textures = loadTXD(txdata);
-        load(fname, textures);
+
+        fclose(fp);
+        printModel(model, textures);
     } catch (const std::string &s) {
         fprintf(stderr, "Error: %s\n", s.c_str());
     } catch (const char *s) {

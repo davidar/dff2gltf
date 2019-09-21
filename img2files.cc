@@ -2,25 +2,16 @@
 
 #include <cstdint>
 #include <cstdio>
-#include <memory>
 #include <string>
 #include <vector>
 
 #include "io.h"
 
-class LoaderIMGFile {
-public:
-    uint32_t offset;
-    uint32_t size;
-    char name[24];
-};
-
-
 int main(int argc, char **argv) {
     std::string basename(argv[1]);
 
     auto dirPath = basename + ".dir";
-    std::vector<LoaderIMGFile> assets;
+    std::vector<DirEntry> assets;
     readfile(dirPath, assets);
 
     auto imgPath = basename + ".img";
@@ -28,17 +19,13 @@ int main(int argc, char **argv) {
     if (!fp) return 1;
 
     for (auto &asset : assets) {
-        auto raw_data = std::make_unique<char[]>(asset.size * 2048);
-
-        fseek(fp, asset.offset * 2048, SEEK_SET);
-        if (fread(raw_data.get(), 2048, asset.size, fp) != asset.size) {
-            printf("Error reading asset %s\n", asset.name);
-        }
+        std::vector<char> raw_data;
+        readimg(fp, asset, raw_data);
 
         FILE* dumpFile = fopen(asset.name, "wb");
         if (!dumpFile) return 1;
 
-        fwrite(raw_data.get(), 2048, asset.size, dumpFile);
+        fwrite(raw_data.data(), 2048, asset.size, dumpFile);
         printf("Saved %s\n", asset.name);
 
         fclose(dumpFile);

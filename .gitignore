@@ -3,7 +3,6 @@ img2files
 txd2png
 dff2glr
 *.bin
-/img/
 /ipl/
 
 # Prerequisites

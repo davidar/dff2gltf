@@ -21,12 +21,6 @@ function read(fname, cb) {
   }
 }
 
-let img = {}
-
-for (const fname of fs.readdirSync('img')) {
-  img[fname.toLowerCase()] = 'img/' + fname
-}
-
 let txd = {}
 
 const fname = process.argv[2]
@@ -56,10 +50,8 @@ read(fname, (section, line) => {
     const [id, model, posX, posY, posZ, scaleX, scaleY, scaleZ, rotX, rotY, rotZ, rotW] = line.split(', ')
     if (model.startsWith('lod')) return
     if (!glr[model]) {
-      const dff = img[model + '.dff']
-      const tex = img[txd[model] + '.txd']
       console.log(model, txd[model])
-      glr[model] = child_process.execFileSync('dff2glr', [dff, tex])
+      glr[model] = child_process.execFileSync('dff2glr', [model, txd[model]])
     }
     let node = JSON.parse(glr[model]).scene.nodes[0]
     if (node.children && node.children.length > 1) {

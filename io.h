@@ -1,5 +1,34 @@
+#include <memory>
 #include <string>
 #include <vector>
+
+struct DirEntry { // https://gtamods.com/wiki/IMG_archive
+    uint32_t offset, size;
+    char name[24];
+};
+
+DirEntry findentry(const std::vector<DirEntry> &assets, const std::string &fname) {
+    for (auto const &asset : assets) {
+        bool equal = true;
+        for (int i = 0; i < fname.size() && i < 24; i++) {
+            if (std::tolower(asset.name[i]) != std::tolower(fname[i])) {
+                equal = false;
+                break;
+            }
+        }
+        if (equal) return asset;
+    }
+    throw "cannot find " + fname;
+}
+
+template <class T>
+void readimg(FILE* fp, const DirEntry &asset, std::vector<T> &vec) {
+    vec.resize(asset.size * 2048);
+    fseek(fp, asset.offset * 2048, SEEK_SET);
+    if (fread(vec.data(), 2048, asset.size, fp) != asset.size) {
+        printf("Error reading asset %s\n", asset.name);
+    }
+}
 
 template <class T>
 void readfile(const std::string &fname, std::vector<T> &vec) {
