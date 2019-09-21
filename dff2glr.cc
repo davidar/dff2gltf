@@ -147,15 +147,18 @@ void printModel(const ClumpPtr model, const std::vector<Texture> &textures) {
     printf("}\n");
 }
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten/bind.h>
+using namespace emscripten;
+EMSCRIPTEN_BINDINGS(dff2glr) {
+    function("printModel", &printModel);
+}
+#else
 int main(int argc, char **argv) {
     std::string dff(argv[1]);
     std::string txd(argv[2]);
     try {
-#ifdef __EMSCRIPTEN__
-        std::string gta3 = "/data";
-#else
         std::string gta3 = getenv("GTA3");
-#endif
         gta3.erase(std::remove(gta3.begin(), gta3.end(), '\\'), gta3.end());
         auto dirPath = gta3 + "/models/gta3.dir";
         std::vector<DirEntry> assets;
@@ -184,3 +187,4 @@ int main(int argc, char **argv) {
         fprintf(stderr, "Error: %s\n", s);
     }
 }
+#endif

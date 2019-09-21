@@ -11,12 +11,12 @@ dff2glr: dff2glr.o dff.o Clump.o txd.o lodepng.o base64.o
 txd.js: txd.cc lodepng.cpp base64.cpp
 	em++ $(CXXFLAGS) $(EMFLAGS) $^ -o $@ --bind
 
+dff2glr.js: dff2glr.cc dff.cc Clump.cpp txd.cc lodepng.cpp base64.cpp
+	em++ $(CXXFLAGS) $(EMFLAGS) $^ -o $@ --bind
+
 data:
 	mkdir -p data/models
 	cp $(GTA3)/models/gta3.dir $(GTA3)/models/gta3.img $(GTA3)/models/generic.txd data/models
-
-dff2glr.html: dff2glr.cc dff.cc Clump.cpp txd.cc lodepng.cpp base64.cpp
-	em++ $(CXXFLAGS) $(EMFLAGS) $^ -o $@ -s FETCH=1 --proxy-to-worker
 
 export GTA3 = $(HOME)/.steam/steam/steamapps/common/Grand\ Theft\ Auto\ 3
 

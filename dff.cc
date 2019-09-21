@@ -504,3 +504,23 @@ ClumpPtr loadDFF(const std::vector<char> &data) {
 
     return model;
 }
+
+ClumpPtr loadDFF(const std::string &s) {
+    try {
+        std::vector<char> data(s.begin(), s.end());
+        return loadDFF(data);
+    } catch (const std::string &s) {
+        fprintf(stderr, "Error: %s\n", s.c_str());
+    } catch (const char *s) {
+        fprintf(stderr, "Error: %s\n", s);
+    }
+    assert(0);
+}
+
+#ifdef __EMSCRIPTEN__
+#include <emscripten/bind.h>
+using namespace emscripten;
+EMSCRIPTEN_BINDINGS(dff) {
+    function("loadDFF", select_overload<ClumpPtr(const std::string &)>(&loadDFF));
+}
+#endif

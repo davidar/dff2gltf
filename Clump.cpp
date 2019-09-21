@@ -141,3 +141,13 @@ ClumpPtr Clump::clone() const {
 
     return clump;
 }
+
+#ifdef __EMSCRIPTEN__
+#include <emscripten/bind.h>
+using namespace emscripten;
+EMSCRIPTEN_BINDINGS(Clump) {
+    class_<Clump>("Clump")
+        .smart_ptr_constructor("Clump", &std::make_shared<Clump>)
+        ;
+}
+#endif
