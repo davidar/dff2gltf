@@ -8,7 +8,7 @@
 #include "io.h"
 #include "txd.h"
 
-void printAttribute(int i, const AtomicPtr &atomic) {
+std::string printAttribute(int i, const AtomicPtr &atomic) {
     auto &geom = atomic->getGeometry();
     auto &name = atomic->getFrame()->getName();
     glm::vec3 minPos = std::accumulate(
@@ -18,25 +18,27 @@ void printAttribute(int i, const AtomicPtr &atomic) {
         std::next(geom->verts.begin()), geom->verts.end(), geom->verts[0].position,
         [](glm::vec3 a, const GeometryVertex &v) { return glm::max(a, v.position); });
 
-    printf("{\"bufferView\": {\"buffer\": ");
+    std::string out = "";
+    out += ssprintf("{\"bufferView\": {\"buffer\": ");
     size_t attrLength = sizeof(GeometryVertex) * geom->verts.size();
-    printf("{\"name\": \"%s.attributes\"}", name.c_str());
-    printf(", \"target\": %d, \"byteLength\": %lu, \"byteStride\": %lu}\n",
+    out += ssprintf("{\"name\": \"%s.attributes\"}", name.c_str());
+    out += ssprintf(", \"target\": %d, \"byteLength\": %lu, \"byteStride\": %lu}\n",
             GL_ARRAY_BUFFER, attrLength, sizeof(GeometryVertex));
 
     auto attr = GeometryVertex::vertex_attributes()[i];
-    printf(", \"type\": \"VEC%d\", \"byteOffset\": %lu, \"componentType\": %d, \"count\": %lu",
+    out += ssprintf(", \"type\": \"VEC%d\", \"byteOffset\": %lu, \"componentType\": %d, \"count\": %lu",
             attr.size, attr.offset, attr.type, geom->verts.size());
     if (attr.sem == ATRS_Position) {
-        printf(", \"min\": [%.9g,%.9g,%.9g]", minPos.x, minPos.y, minPos.z);
-        printf(", \"max\": [%.9g,%.9g,%.9g]", maxPos.x, maxPos.y, maxPos.z);
+        out += ssprintf(", \"min\": [%.9g,%.9g,%.9g]", minPos.x, minPos.y, minPos.z);
+        out += ssprintf(", \"max\": [%.9g,%.9g,%.9g]", maxPos.x, maxPos.y, maxPos.z);
     } else if (attr.sem == ATRS_Colour) {
-        printf(", \"normalized\": true");
+        out += ssprintf(", \"normalized\": true");
     }
-    printf("}\n");
+    out += ssprintf("}\n");
+    return out;
 }
 
-std::string printAtomic(const AtomicPtr &atomic, const std::vector<Texture> &textures) {
+std::pair<std::string, std::string> printAtomic(const AtomicPtr &atomic, const std::vector<Texture> &textures) {
     auto &geom = atomic->getGeometry();
     auto &name = atomic->getFrame()->getName();
 
@@ -56,24 +58,25 @@ std::string printAtomic(const AtomicPtr &atomic, const std::vector<Texture> &tex
     named += ", \"" + name + ".indices\": " +
         "{\"uri\": \"" + uriIndices + "\", \"byteLength\": " + std::to_string(indicesLength) + "}";
 
-    printf("{\"name\": \"%s\", \"mesh\": {\"primitives\": [\n", name.c_str());
+    std::string out = "";
+    out += ssprintf("{\"name\": \"%s\", \"mesh\": {\"primitives\": [\n", name.c_str());
     for (auto const &sg : geom->subgeom) {
-        printf("{\"mode\": %d", geom->facetype == Geometry::Triangles ? GL_TRIANGLES : GL_TRIANGLE_STRIP);
-        printf(", \"attributes\": ");
-        printf("{ \"POSITION\": ");
-        printAttribute(0, atomic);
-        printf(", \"NORMAL\": ");
-        printAttribute(1, atomic);
-        printf(", \"TEXCOORD_0\": ");
-        printAttribute(2, atomic);
-        printf(", \"COLOR_0\": ");
-        printAttribute(3, atomic);
-        printf("}");
-        printf(", \"indices\": {\"bufferView\": {\"buffer\": ");
-        printf("{\"name\": \"%s.indices\"}", name.c_str());
-        printf(", \"target\": %d, \"byteOffset\": %lu, \"byteLength\": %lu}\n",
+        out += ssprintf("{\"mode\": %d", geom->facetype == Geometry::Triangles ? GL_TRIANGLES : GL_TRIANGLE_STRIP);
+        out += ssprintf(", \"attributes\": ");
+        out += ssprintf("{ \"POSITION\": ");
+        out += printAttribute(0, atomic);
+        out += ssprintf(", \"NORMAL\": ");
+        out += printAttribute(1, atomic);
+        out += ssprintf(", \"TEXCOORD_0\": ");
+        out += printAttribute(2, atomic);
+        out += ssprintf(", \"COLOR_0\": ");
+        out += printAttribute(3, atomic);
+        out += ssprintf("}");
+        out += ssprintf(", \"indices\": {\"bufferView\": {\"buffer\": ");
+        out += ssprintf("{\"name\": \"%s.indices\"}", name.c_str());
+        out += ssprintf(", \"target\": %d, \"byteOffset\": %lu, \"byteLength\": %lu}\n",
                 GL_ELEMENT_ARRAY_BUFFER, sg.start * sizeof(uint32_t), sizeof(uint32_t) * sg.numIndices);
-        printf(", \"type\": \"SCALAR\", \"componentType\": %d, \"count\": %lu}\n",
+        out += ssprintf(", \"type\": \"SCALAR\", \"componentType\": %d, \"count\": %lu}\n",
                 GL_UNSIGNED_INT, sg.numIndices);
 
         int matIndex = sg.material;
@@ -83,7 +86,7 @@ std::string printAtomic(const AtomicPtr &atomic, const std::vector<Texture> &tex
                 RW::BSGeometry::ModuleMaterialColor) {
             c = glm::vec4(mat.colour) / 255.0f;
         }
-        printf(", \"material\": {");
+        out += ssprintf(", \"material\": {");
         if (!mat.textures.empty() || c != glm::vec4(-1)) {
             const Texture *texture = NULL;
             for (int i = 0; i < textures.size(); i++) {
@@ -92,59 +95,64 @@ std::string printAtomic(const AtomicPtr &atomic, const std::vector<Texture> &tex
                     break;
                 }
             }
-            printf("\"pbrMetallicRoughness\": {");
-            printf("\"metallicFactor\": 0");
+            out += ssprintf("\"pbrMetallicRoughness\": {");
+            out += ssprintf("\"metallicFactor\": 0");
             if (texture) {
-                printf(", \"baseColorTexture\": {\"index\": {\"source\": ");
-                printf("{\"name\": \"%s\", \"uri\": \"%s\"}",
+                out += ssprintf(", \"baseColorTexture\": {\"index\": {\"source\": ");
+                out += ssprintf("{\"name\": \"%s\", \"uri\": \"%s\"}",
                         texture->name.c_str(), dataURI(*texture).c_str());
-                printf(", \"sampler\": ");
-                printf("{\"minFilter\": %d, \"magFilter\": %d, ",
+                out += ssprintf(", \"sampler\": ");
+                out += ssprintf("{\"minFilter\": %d, \"magFilter\": %d, ",
                         texture->minFilter, texture->magFilter);
-                printf("\"wrapS\": %d, \"wrapT\": %d}\n",
+                out += ssprintf("\"wrapS\": %d, \"wrapT\": %d}\n",
                         texture->wrapS, texture->wrapT);
-                printf("}}");
+                out += ssprintf("}}");
             } else if (!mat.textures.empty()) {
                 fprintf(stderr, "Warning: missing texture %s\n", mat.textures[0].name.c_str());
             }
             if (c != glm::vec4(-1)) {
-                printf(", \"baseColorFactor\": [%g,%g,%g,%g]", c.r,c.g,c.b,c.a);
+                out += ssprintf(", \"baseColorFactor\": [%g,%g,%g,%g]", c.r,c.g,c.b,c.a);
             }
-            printf("}");
+            out += ssprintf("}");
             if (c != glm::vec4(-1) && c.a < 1) {
-                printf(", \"alphaMode\": \"BLEND\"");
+                out += ssprintf(", \"alphaMode\": \"BLEND\"");
             } else if (texture) {
-                printf(", \"alphaMode\": \"%s\"", texture->transparent ? "BLEND" : "OPAQUE");
+                out += ssprintf(", \"alphaMode\": \"%s\"", texture->transparent ? "BLEND" : "OPAQUE");
             }
-            printf(", ");
+            out += ssprintf(", ");
         }
-        printf("\"doubleSided\": true}");
-        printf("}\n");
-        if (&sg != &geom->subgeom.back()) printf(",");
+        out += ssprintf("\"doubleSided\": true}");
+        out += ssprintf("}\n");
+        if (&sg != &geom->subgeom.back()) out += ssprintf(",");
     }
-    printf("]}}");
+    out += ssprintf("]}}");
 
-    return named;
+    return std::make_pair(out, named);
 }
 
-void printModel(const ClumpPtr model, const std::vector<Texture> &textures) {
-    printf("{\"asset\": {\"generator\": \"dff2gltf\", \"version\": \"2.0\"},\n");
-    printf("\"scene\": {\"nodes\": [{\"children\": [");
+std::string printModel(const ClumpPtr model, const std::vector<Texture> &textures) {
+    std::string out = "";
+    out += ssprintf("{\"asset\": {\"generator\": \"dff2gltf\", \"version\": \"2.0\"},\n");
+    out += ssprintf("\"scene\": {\"nodes\": [{\"children\": [");
     std::string named = "";
     for (auto const &atomic : model->getAtomics()) {
-        named += printAtomic(atomic, textures);
+        std::string json, bufs;
+        std::tie(json, bufs) = printAtomic(atomic, textures);
+        out += json;
+        named += bufs;
         if (&atomic != &model->getAtomics().back()) {
-            printf(",");
+            out += ssprintf(",");
             named += ",";
         }
     }
-    printf("]");
+    out += ssprintf("]");
     if (model->getFrame()) {
-        printf(", \"name\": \"%s\"", model->getFrame()->getName().c_str());
+        out += ssprintf(", \"name\": \"%s\"", model->getFrame()->getName().c_str());
     }
-    printf(", \"rotation\": [-0.5,0.5,0.5,0.5]}]}");
-    printf(", \"named\": {%s}", named.c_str());
-    printf("}\n");
+    out += ssprintf(", \"rotation\": [-0.5,0.5,0.5,0.5]}]}");
+    out += ssprintf(", \"named\": {%s}", named.c_str());
+    out += ssprintf("}\n");
+    return out;
 }
 
 #ifdef __EMSCRIPTEN__
@@ -180,7 +188,8 @@ int main(int argc, char **argv) {
         }
         auto textures = loadTXD(txdata);
 
-        printModel(model, textures);
+        auto out = printModel(model, textures);
+        printf("%s", out.c_str());
     } catch (const std::string &s) {
         fprintf(stderr, "Error: %s\n", s.c_str());
     } catch (const char *s) {
