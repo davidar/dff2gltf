@@ -7,7 +7,6 @@
 #include <memory>
 #include <numeric>
 
-#include <boost/range/adaptors.hpp>
 #include <glm/glm.hpp>
 
 #include "base64.h"

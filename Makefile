@@ -1,7 +1,9 @@
 CC = clang++
 CXX = clang++
+CXXFLAGS = -Iglm -std=c++14
 export PATH := $(PWD):$(PATH)
 
+all: img2files txd2png dff2glr
 txd2png: txd2png.o txd.o lodepng.o
 dff2glr: dff2glr.o Clump.o txd.o lodepng.o base64.o
 
