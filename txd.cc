@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "base64.h"
 #include "lodepng.h"
 #include "RWBinaryStream.hpp"
 
@@ -150,4 +151,13 @@ std::vector<Texture> loadTXD(const std::vector<char> &data) {
     }
 
     return textures;
+}
+
+std::vector<Texture> loadTXD(const std::string &s) {
+    std::vector<char> data(s.begin(), s.end());
+    return loadTXD(data);
+}
+
+std::string dataURI(const Texture &texture) {
+    return "data:image/png;base64," + base64_encode(texture.png.data(), texture.png.size());
 }

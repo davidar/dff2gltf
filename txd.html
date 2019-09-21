@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+  <script>
+    var Module = {
+      printErr: function(s) {
+        console.error(s)
+      },
+      onRuntimeInitialized: function() {
+        fetch('/data/models/generic.txd').then(response => response.blob()).then(blob => blob.arrayBuffer()).then(buf => {
+          try {
+            let textures = Module.loadTXD(buf)
+            for (let i = 0; i < textures.size(); i++) {
+              let texture = textures.get(i)
+              let img = document.createElement('img')
+              img.title = texture.name
+              img.src = Module.dataURI(texture)
+              document.body.appendChild(img)
+              console.log(texture)
+            }
+          } catch(e) {
+            console.error(e)
+          }
+        })
+      }
+    }
+  </script>
+  <script src="txd.js"></script>
+</html>

@@ -96,10 +96,8 @@ std::string printAtomic(const AtomicPtr &atomic, const std::vector<Texture> &tex
             printf("\"metallicFactor\": 0");
             if (texture) {
                 printf(", \"baseColorTexture\": {\"index\": {\"source\": ");
-                auto uri = "data:image/png;base64," +
-                        base64_encode(texture->png.data(), texture->png.size());
                 printf("{\"name\": \"%s\", \"uri\": \"%s\"}",
-                        texture->name.c_str(), uri.c_str());
+                        texture->name.c_str(), dataURI(*texture).c_str());
                 printf(", \"sampler\": ");
                 printf("{\"minFilter\": %d, \"magFilter\": %d, ",
                         texture->minFilter, texture->magFilter);
