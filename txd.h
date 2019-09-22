@@ -1,5 +1,4 @@
-#ifndef _TXD_H_
-#define _TXD_H_
+#pragma once
 #include <string>
 #include <vector>
 
@@ -16,4 +15,3 @@ struct Texture {
 
 std::vector<Texture> loadTXD(const bytes &data);
 std::string dataURI(const Texture &texture);
-#endif

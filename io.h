@@ -51,7 +51,7 @@ void readimg(const std::string &fname, const DirEntry &asset, std::vector<T> &ve
     emscripten_fetch_close(fetch);
 #else
     FILE* fp = fopen(fname.c_str(), "rb");
-    if (!fp) throw "cannot open file " + fname;
+    if (!fp) die("cannot open file " + fname);
     vec.resize(asset.size * 2048);
     fseek(fp, asset.offset * 2048, SEEK_SET);
     if (fread(vec.data(), 2048, asset.size, fp) != asset.size) {
@@ -80,7 +80,7 @@ void readfile(const std::string &fname, std::vector<T> &vec) {
     emscripten_fetch_close(fetch);
 #else
     FILE* fp = fopen(fname.c_str(), "rb");
-    if (!fp) throw "cannot open file " + fname;
+    if (!fp) die("cannot open file " + fname);
 
     fseek(fp, 0, SEEK_END);
     unsigned long fileSize = ftell(fp);
@@ -101,7 +101,7 @@ void readfile(const std::string &fname, std::vector<T> &vec) {
 
 void cat(const std::string &fname) {
     FILE* fp = fopen(fname.c_str(), "r");
-    if (!fp) throw "cannot open file " + fname;
+    if (!fp) die("cannot open file " + fname);
     char buf[1024];
     while (size_t buflen = fread(buf, 1, sizeof(buf), fp)) {
         fwrite(buf, 1, buflen, stdout);

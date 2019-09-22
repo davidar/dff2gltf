@@ -165,7 +165,6 @@ EMSCRIPTEN_BINDINGS(dff2glr) {
 int main(int argc, char **argv) {
     std::string dff(argv[1]);
     std::string txd(argv[2]);
-    try {
         std::string gta3 = getenv("GTA3");
         gta3.erase(std::remove(gta3.begin(), gta3.end(), '\\'), gta3.end());
         auto dirPath = gta3 + "/models/gta3.dir";
@@ -190,10 +189,5 @@ int main(int argc, char **argv) {
 
         auto out = printModel(model, textures);
         printf("%s", out.c_str());
-    } catch (const std::string &s) {
-        fprintf(stderr, "Error: %s\n", s.c_str());
-    } catch (const char *s) {
-        fprintf(stderr, "Error: %s\n", s);
-    }
 }
 #endif

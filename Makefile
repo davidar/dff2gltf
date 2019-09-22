@@ -1,7 +1,7 @@
 CC = clang++
 CXX = clang++
-CXXFLAGS = -Iglm -std=c++14 -Werror
-EMFLAGS = -s DISABLE_EXCEPTION_CATCHING=0 -s DEMANGLE_SUPPORT=1
+CXXFLAGS = -Iglm -std=c++14 -Werror -fno-exceptions
+EMFLAGS =
 export PATH := $(PWD):$(PATH)
 
 all: img2files txd2png dff2glr

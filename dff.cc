@@ -11,6 +11,7 @@
 
 #include <glm/glm.hpp>
 
+#include "common.h"
 #include "RWBinaryStream.hpp"
 
 FrameList readFrameList(const RWBStream& stream);
@@ -70,7 +71,7 @@ FrameList readFrameList(const RWBStream &stream) {
 
     auto listStructID = listStream.getNextChunk();
     if (listStructID != CHUNK_STRUCT) {
-        throw "Frame List missing struct chunk";
+        die("Frame List missing struct chunk");
     }
 
     const char *headerPtr = listStream.getCursor();
@@ -136,7 +137,7 @@ GeometryList readGeometryList(const RWBStream &stream) {
 
     auto listStructID = listStream.getNextChunk();
     if (listStructID != CHUNK_STRUCT) {
-        throw "Geometry List missing struct chunk";
+        die("Geometry List missing struct chunk");
     }
 
     const char *headerPtr = listStream.getCursor();
@@ -166,7 +167,7 @@ GeometryPtr readGeometry(const RWBStream &stream) {
 
     auto geomStructID = geomStream.getNextChunk();
     if (geomStructID != CHUNK_STRUCT) {
-        throw "Geometry missing struct chunk";
+        die("Geometry missing struct chunk");
     }
 
     auto geom = std::make_shared<Geometry>();
@@ -272,7 +273,7 @@ void readMaterialList(const GeometryPtr &geom, const RWBStream &stream) {
 
     auto listStructID = listStream.getNextChunk();
     if (listStructID != CHUNK_STRUCT) {
-        throw "MaterialList missing struct chunk";
+        die("MaterialList missing struct chunk");
     }
 
     unsigned int numMaterials = bit_cast<std::uint32_t>(*listStream.getCursor());
@@ -296,7 +297,7 @@ void readMaterial(const GeometryPtr &geom, const RWBStream &stream) {
 
     auto matStructID = materialStream.getNextChunk();
     if (matStructID != CHUNK_STRUCT) {
-        throw "Material missing struct chunk";
+        die("Material missing struct chunk");
     }
 
     const char *matData = materialStream.getCursor();
@@ -343,7 +344,7 @@ void readTexture(Geometry::Material &material,
 
     auto texStructID = texStream.getNextChunk();
     if (texStructID != CHUNK_STRUCT) {
-        throw "Texture missing struct chunk";
+        die("Texture missing struct chunk");
     }
 
     // There's some data in the Texture's struct, but we don't know what it is.
@@ -419,7 +420,7 @@ AtomicPtr readAtomic(FrameList &framelist,
 
     auto atomicStructID = atomicStream.getNextChunk();
     if (atomicStructID != CHUNK_STRUCT) {
-        throw "Atomic missing struct chunk";
+        die("Atomic missing struct chunk");
     }
 
     auto data = atomicStream.getCursor();
@@ -449,7 +450,7 @@ AtomicPtr readAtomic(FrameList &framelist,
 }
 
 ClumpPtr loadDFF(const bytes &data) {
-    if (!data.size()) throw "Empty file";
+    if (!data.size()) die("Empty file");
 
     auto model = std::make_shared<Clump>();
 
@@ -457,13 +458,13 @@ ClumpPtr loadDFF(const bytes &data) {
 
     auto rootID = rootStream.getNextChunk();
     if (rootID != CHUNK_CLUMP) {
-        throw "Invalid root section ID " + std::to_string(rootID);
+        die("Invalid root section ID " + std::to_string(rootID));
     }
 
     RWBStream modelStream = rootStream.getInnerStream();
     auto rootStructID = modelStream.getNextChunk();
     if (rootStructID != CHUNK_STRUCT) {
-        throw "Clump missing struct chunk";
+        die("Clump missing struct chunk");
     }
 
     // There is only one value in the struct section.
@@ -490,7 +491,7 @@ ClumpPtr loadDFF(const bytes &data) {
                 auto atomic = readAtomic(framelist, geometrylist, modelStream);
                 if (!atomic) {
                     // Abort reading the rest of the clump
-                    throw "Failed to read atomic";
+                    die("Failed to read atomic");
                 }
                 model->addAtomic(atomic);
             } break;
