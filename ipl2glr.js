@@ -3,7 +3,36 @@
 
 const fs = require('fs')
 const path = require('path')
-const child_process = require('child_process')
+const Module = require('./dff2glr.js')
+
+Module.onRuntimeInitialized = main
+
+const GTA3 = process.env.GTA3.replace(/\\/g,'')
+
+function readAsset(asset) {
+  let offset = 2048 * asset.offset
+  let size = 2048 * asset.size
+  let f = fs.openSync(GTA3 + '/models/gta3.img', 'r')
+  let buf = Buffer.alloc(size)
+  fs.readSync(f, buf, 0, size, offset)
+  fs.closeSync(f)
+  return buf
+}
+
+function dff2glr(dff, txd) {
+  let dir = fs.readFileSync(GTA3 + '/models/gta3.dir')
+  let assets = Module.loadDIR(Module.to_bytes(dir))
+
+  let assetDFF = readAsset(Module.findEntry(assets, dff + '.dff'))
+  let model    = Module.loadDFF(Module.to_bytes(assetDFF))
+
+  let assetTXD = (txd === 'generic')
+               ? fs.readFileSync(GTA3 + '/models/generic.txd')
+               : readAsset(Module.findEntry(assets, txd + '.txd'))
+  let textures = Module.loadTXD(Module.to_bytes(assetTXD))
+
+  return Module.printModel(model, textures)
+}
 
 function read(fname, cb) {
   const lines = fs.readFileSync(fname).toString().split('\n')
@@ -46,13 +75,14 @@ for (const ide of ides) {
 let glr = {}
 let nodes = []
 let named = {}
-read(fname, (section, line) => {
+
+function parseItem(section, line) {
   if (section === 'inst') {
     const [id, model, posX, posY, posZ, scaleX, scaleY, scaleZ, rotX, rotY, rotZ, rotW] = line.split(', ')
     if (model.startsWith('lod')) return
     if (!glr[model]) {
       console.log(model, txd[model])
-      glr[model] = child_process.execFileSync('dff2glr', [model, txd[model]])
+      glr[model] = dff2glr(model, txd[model])
     }
     let obj = JSON.parse(glr[model])
     named = Object.assign(named, obj.named)
@@ -71,14 +101,18 @@ read(fname, (section, line) => {
     node.scale = [Number(scaleX), Number(scaleY), Number(scaleZ)]
     nodes.push(node)
   }
-})
-
-let model = {
-  asset: { generator: 'dff2gltf', version: '2.0' },
-  scene: { nodes: [{
-    name: name, children: nodes, rotation: [0.5,0.5,0.5,-0.5]
-  }] },
-  named: named
 }
 
-fs.writeFileSync(name + '.glr', JSON.stringify(model, null, 2))
+function main() {
+  read(fname, parseItem)
+
+  let model = {
+    asset: { generator: 'dff2gltf', version: '2.0' },
+    scene: { nodes: [{
+      name: name, children: nodes, rotation: [0.5,0.5,0.5,-0.5]
+    }] },
+    named: named
+  }
+
+  fs.writeFileSync(name + '.glr', JSON.stringify(model, null, 2))
+}

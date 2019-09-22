@@ -1,7 +1,7 @@
 CC = clang++
 CXX = clang++
 CXXFLAGS = -Iglm -std=c++14 -Werror -fno-exceptions
-EMFLAGS =
+EMFLAGS = -s ALLOW_MEMORY_GROWTH=1
 export PATH := $(PWD):$(PATH)
 
 all: img2files txd2png dff2glr
@@ -40,7 +40,7 @@ img: img2files
 	cd img && ../img2files $(GTA3)/models/gta3 && cd ..
 	cp $(GTA3)/models/*.txd $(GTA3)/models/*.TXD img
 
-ipl: ipl2glr.js dff2glr
+ipl: ipl2glr.js dff2glr.js
 	mkdir -p ipl
 	cd ipl && for f in $(IPL); do echo "$$f"; ../ipl2glr.js "$$f.ipl" "`dirname "$$f"`/`basename "$$f" | tr A-Z a-z`.ide"; done
 	cd ipl && ../ipl2glr.js $(GTA3)/data/maps/overview.ipl && ../ipl2glr.js $(GTA3)/data/maps/props.IPL
