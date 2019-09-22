@@ -6,29 +6,11 @@
 #include <vector>
 
 #include "common.h"
+#include "dir.h"
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/fetch.h>
 #endif
-
-struct DirEntry { // https://gtamods.com/wiki/IMG_archive
-    uint32_t offset, size;
-    char name[24];
-};
-
-DirEntry findentry(const std::vector<DirEntry> &assets, const std::string &fname) {
-    for (auto const &asset : assets) {
-        bool equal = true;
-        for (int i = 0; i < fname.size() && i < 24; i++) {
-            if (std::tolower(asset.name[i]) != std::tolower(fname[i])) {
-                equal = false;
-                break;
-            }
-        }
-        if (equal) return asset;
-    }
-    throw "cannot find " + fname;
-}
 
 template <class T>
 void readimg(const std::string &fname, const DirEntry &asset, std::vector<T> &vec) {
@@ -59,6 +41,12 @@ void readimg(const std::string &fname, const DirEntry &asset, std::vector<T> &ve
     }
     fclose(fp);
 #endif
+}
+
+bytes readimg(const std::string &fname, const DirEntry &asset) {
+    bytes data;
+    readimg(fname, asset, data);
+    return data;
 }
 
 template <class T>
@@ -97,6 +85,12 @@ void readfile(const std::string &fname, std::vector<T> &vec) {
 
     fclose(fp);
 #endif
+}
+
+bytes readfile(const std::string &fname) {
+    bytes data;
+    readfile(fname, data);
+    return data;
 }
 
 void cat(const std::string &fname) {

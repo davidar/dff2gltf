@@ -11,14 +11,12 @@ int main(int argc, char **argv) {
     std::string basename(argv[1]);
 
     auto dirPath = basename + ".dir";
-    std::vector<DirEntry> assets;
-    readfile(dirPath, assets);
+    auto assets = loadDIR(readfile(dirPath));
 
     auto imgPath = basename + ".img";
 
     for (auto &asset : assets) {
-        bytes raw_data;
-        readimg(imgPath, asset, raw_data);
+        auto raw_data = readimg(imgPath, asset);
 
         FILE* dumpFile = fopen(asset.name, "wb");
         if (!dumpFile) {

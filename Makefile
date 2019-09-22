@@ -5,15 +5,16 @@ EMFLAGS =
 export PATH := $(PWD):$(PATH)
 
 all: img2files txd2png dff2glr
+img2files: img2files.o dir.o
 txd2png: txd2png.o txd.o lodepng.o base64.o
-dff2glr: dff2glr.o dff.o Clump.o txd.o lodepng.o base64.o
+dff2glr: dff2glr.o dff.o Clump.o dir.o txd.o lodepng.o base64.o
 
 js: txd.js dff2glr.js
 
 txd.js: txd.cc common.cc lodepng.cpp base64.cpp
 	em++ $(CXXFLAGS) $(EMFLAGS) $^ -o $@ --bind
 
-dff2glr.js: dff2glr.cc common.cc dff.cc Clump.cpp txd.cc lodepng.cpp base64.cpp
+dff2glr.js: dff2glr.cc common.cc dff.cc Clump.cpp dir.cc txd.cc lodepng.cpp base64.cpp
 	em++ $(CXXFLAGS) $(EMFLAGS) $^ -o $@ --bind
 
 data:

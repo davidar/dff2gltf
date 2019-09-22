@@ -1,8 +1,13 @@
 .*.swp
 img2files
 txd2png
+txd.js
+txd.wasm
 dff2glr
+dff2glr.js
+dff2glr.wasm
 *.bin
+/data/
 /ipl/
 
 # Prerequisites

@@ -77,25 +77,41 @@
       requestAnimationFrame(animate);
       renderer.render(scene, camera);
     }
+    function fetchAsset(asset) {
+      let range = 'bytes=' + (2048 * asset.offset) + '-' + (2048 * (asset.offset + asset.size))
+      return fetch('/data/models/gta3.img', { headers: { 'Range': range }})
+    }
+    function renderModel(dff, txd) {
+      try {
+        let textures = Module.loadTXD(Module.to_bytes(txd))
+        let model = Module.loadDFF(Module.to_bytes(dff))
+        let out = Module.printModel(model, textures)
+        let gltf = glr2gltf(out)
+        var loader = new THREE.GLTFLoader()
+        loader.load('data:application/json,' + encodeURIComponent(JSON.stringify(gltf)), setup)
+      } catch(e) {
+        console.error(e)
+      }
+    }
     var Module = {
       printErr: function(s) {
         console.error(s)
       },
       onRuntimeInitialized: function() {
         const urlParams = new URLSearchParams(window.location.search);
-        fetch(urlParams.get('dff')).then(response => response.blob()).then(blob => blob.arrayBuffer()).then(dff => {
-          fetch(urlParams.get('txd')).then(response => response.blob()).then(blob => blob.arrayBuffer()).then(txd => {
-            try {
-              let textures = Module.loadTXD(Module.to_bytes(txd))
-              let model = Module.loadDFF(Module.to_bytes(dff))
-              let out = Module.printModel(model, textures)
-              let gltf = glr2gltf(out)
-              var loader = new THREE.GLTFLoader()
-              loader.load('data:application/json,' + encodeURIComponent(JSON.stringify(gltf)), setup)
-            } catch(e) {
-              console.error(e)
-            }
-          })
+        fetch('/data/models/gta3.dir').then(response => response.blob()).then(blob => blob.arrayBuffer()).then(dir => {
+          try {
+            let assets = Module.loadDIR(Module.to_bytes(dir))
+            let assetDFF = Module.findEntry(assets, urlParams.get('dff') + '.dff')
+            let assetTXD = Module.findEntry(assets, urlParams.get('txd') + '.txd')
+            fetchAsset(assetDFF).then(response => response.blob()).then(blob => blob.arrayBuffer()).then(dff => {
+              fetchAsset(assetTXD).then(response => response.blob()).then(blob => blob.arrayBuffer()).then(txd => {
+                renderModel(dff, txd)
+              })
+            })
+          } catch (e) {
+            console.error(e)
+          }
         })
       }
     }

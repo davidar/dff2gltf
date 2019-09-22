@@ -168,21 +168,18 @@ int main(int argc, char **argv) {
         std::string gta3 = getenv("GTA3");
         gta3.erase(std::remove(gta3.begin(), gta3.end(), '\\'), gta3.end());
         auto dirPath = gta3 + "/models/gta3.dir";
-        std::vector<DirEntry> assets;
-        readfile(dirPath, assets);
+        auto assets = loadDIR(readfile(dirPath));
 
         auto imgPath = gta3 + "/models/gta3.img";
 
-        bytes data;
-        auto asset = findentry(assets, dff + ".dff");
-        readimg(imgPath, asset, data);
-        auto model = loadDFF(data);
+        auto asset = findEntry(assets, dff + ".dff");
+        auto model = loadDFF(readimg(imgPath, asset));
 
         bytes txdata;
         if (txd == "generic") {
             readfile(gta3 + "/models/generic.txd", txdata);
         } else {
-            auto asset = findentry(assets, txd + ".txd");
+            auto asset = findEntry(assets, txd + ".txd");
             readimg(imgPath, asset, txdata);
         }
         auto textures = loadTXD(txdata);
