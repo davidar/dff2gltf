@@ -86,8 +86,8 @@
         fetch(urlParams.get('dff')).then(response => response.blob()).then(blob => blob.arrayBuffer()).then(dff => {
           fetch(urlParams.get('txd')).then(response => response.blob()).then(blob => blob.arrayBuffer()).then(txd => {
             try {
-              let textures = Module.loadTXD(txd)
-              let model = Module.loadDFF(dff)
+              let textures = Module.loadTXD(Module.to_bytes(txd))
+              let model = Module.loadDFF(Module.to_bytes(dff))
               let out = Module.printModel(model, textures)
               let gltf = glr2gltf(out)
               var loader = new THREE.GLTFLoader()

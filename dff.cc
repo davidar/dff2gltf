@@ -448,12 +448,12 @@ AtomicPtr readAtomic(FrameList &framelist,
     return atomic;
 }
 
-ClumpPtr loadDFF(const std::vector<char> &data) {
+ClumpPtr loadDFF(const bytes &data) {
     if (!data.size()) throw "Empty file";
 
     auto model = std::make_shared<Clump>();
 
-    RWBStream rootStream(data.data(), data.size());
+    RWBStream rootStream((const char *)data.data(), data.size());
 
     auto rootID = rootStream.getNextChunk();
     if (rootID != CHUNK_CLUMP) {
@@ -505,22 +505,10 @@ ClumpPtr loadDFF(const std::vector<char> &data) {
     return model;
 }
 
-ClumpPtr loadDFF(const std::string &s) {
-    try {
-        std::vector<char> data(s.begin(), s.end());
-        return loadDFF(data);
-    } catch (const std::string &s) {
-        fprintf(stderr, "Error: %s\n", s.c_str());
-    } catch (const char *s) {
-        fprintf(stderr, "Error: %s\n", s);
-    }
-    assert(0);
-}
-
 #ifdef __EMSCRIPTEN__
 #include <emscripten/bind.h>
 using namespace emscripten;
 EMSCRIPTEN_BINDINGS(dff) {
-    function("loadDFF", select_overload<ClumpPtr(const std::string &)>(&loadDFF));
+    function("loadDFF", &loadDFF);
 }
 #endif

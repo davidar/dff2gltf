@@ -5,14 +5,15 @@
 
 #include <GL/gl.h>
 
+#include "common.h"
+
 struct Texture {
     std::string name, alpha;
-    std::vector<unsigned char> png;
+    bytes png;
     bool transparent;
     GLenum minFilter, magFilter, wrapS, wrapT;
 };
 
-std::vector<Texture> loadTXD(const std::vector<char> &data);
-std::vector<Texture> loadTXD(const std::string &s);
+std::vector<Texture> loadTXD(const bytes &data);
 std::string dataURI(const Texture &texture);
 #endif

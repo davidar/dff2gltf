@@ -174,12 +174,12 @@ int main(int argc, char **argv) {
 
         auto imgPath = gta3 + "/models/gta3.img";
 
-        std::vector<char> data;
+        bytes data;
         auto asset = findentry(assets, dff + ".dff");
         readimg(imgPath, asset, data);
         auto model = loadDFF(data);
 
-        std::vector<char> txdata;
+        bytes txdata;
         if (txd == "generic") {
             readfile(gta3 + "/models/generic.txd", txdata);
         } else {

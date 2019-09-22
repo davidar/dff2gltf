@@ -17,7 +17,7 @@ int main(int argc, char **argv) {
     auto imgPath = basename + ".img";
 
     for (auto &asset : assets) {
-        std::vector<char> raw_data;
+        bytes raw_data;
         readimg(imgPath, asset, raw_data);
 
         FILE* dumpFile = fopen(asset.name, "wb");

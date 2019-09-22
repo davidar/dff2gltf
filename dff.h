@@ -2,6 +2,6 @@
 #include <vector>
 
 #include "Clump.hpp"
+#include "common.h"
 
-ClumpPtr loadDFF(const std::vector<char> &data);
-ClumpPtr loadDFF(const std::string &data);
+ClumpPtr loadDFF(const bytes &data);

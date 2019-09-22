@@ -8,7 +8,7 @@
       onRuntimeInitialized: function() {
         fetch('/data/models/generic.txd').then(response => response.blob()).then(blob => blob.arrayBuffer()).then(buf => {
           try {
-            let textures = Module.loadTXD(buf)
+            let textures = Module.loadTXD(Module.to_bytes(buf))
             for (let i = 0; i < textures.size(); i++) {
               let texture = textures.get(i)
               let img = document.createElement('img')

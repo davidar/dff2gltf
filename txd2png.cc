@@ -4,7 +4,7 @@
 
 int main(int argc, char **argv) {
     std::string fname(argv[1]);
-    std::vector<char> data;
+    bytes data;
     readfile(fname, data);
     for (auto texture : loadTXD(data)) {
         lodepng::save_file(texture.png, texture.name + ".png");

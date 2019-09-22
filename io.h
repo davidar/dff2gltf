@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+#include "common.h"
+
 #ifdef __EMSCRIPTEN__
 #include <emscripten/fetch.h>
 #endif

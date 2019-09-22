@@ -27,9 +27,9 @@ void processPalette(uint32_t* fullColor, RW::BinaryStreamSection& rootSection) {
     }
 }
 
-std::vector<Texture> loadTXD(const std::vector<char> &data) {
+std::vector<Texture> loadTXD(const bytes &data) {
     std::vector<Texture> textures;
-    RW::BinaryStreamSection root(data.data());
+    RW::BinaryStreamSection root((const char *)data.data());
     /*auto texDict =*/root.readStructure<RW::BSTextureDictionary>();
 
     size_t rootI = 0;
@@ -153,11 +153,6 @@ std::vector<Texture> loadTXD(const std::vector<char> &data) {
     return textures;
 }
 
-std::vector<Texture> loadTXD(const std::string &s) {
-    std::vector<char> data(s.begin(), s.end());
-    return loadTXD(data);
-}
-
 std::string dataURI(const Texture &texture) {
     return "data:image/png;base64," + base64_encode(texture.png.data(), texture.png.size());
 }
@@ -176,9 +171,8 @@ EMSCRIPTEN_BINDINGS(txd) {
         .field("wrapS",       &Texture::wrapS)
         .field("wrapT",       &Texture::wrapT)
         ;
-    register_vector<unsigned char>("Buffer");
     register_vector<Texture>("TextureList");
-    function("loadTXD", select_overload<std::vector<Texture>(const std::string &)>(&loadTXD));
+    function("loadTXD", &loadTXD);
     function("dataURI", &dataURI);
 }
 #endif
