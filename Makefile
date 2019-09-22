@@ -20,6 +20,7 @@ dff2glr.js: dff2glr.cc common.cc dff.cc Clump.cpp dir.cc txd.cc lodepng.cpp base
 data:
 	mkdir -p data/models
 	cp $(GTA3)/models/gta3.dir $(GTA3)/models/gta3.img $(GTA3)/models/generic.txd data/models
+	cp -rv $(GTA3)/data data/
 
 export GTA3 = $(HOME)/.steam/steam/steamapps/common/Grand\ Theft\ Auto\ 3
 
