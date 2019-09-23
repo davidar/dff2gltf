@@ -1,12 +1,21 @@
 CC = clang++
 CXX = clang++
-CXXFLAGS = -Iglm -std=c++14 -Werror -fno-exceptions
+DEBUG_FLAGS = -g -fsanitize=address
+CXXFLAGS = -Iglm -Ilibrw -std=c++14 -Werror -fno-exceptions $(DEBUG_FLAGS)
+LDFLAGS = $(DEBUG_FLAGS)
 EMFLAGS = -s ALLOW_MEMORY_GROWTH=1
 export PATH := $(PWD):$(PATH)
 
+LIBRW_PLATFORM = linux-amd64-null
+LIBRW = librw/lib/$(LIBRW_PLATFORM)/Release/librw.a
+
 all: img2files txd2png dff2glr
+
+$(LIBRW):
+	cd librw && premake5 gmake && $(MAKE) -C build config=release_$(LIBRW_PLATFORM)
+
 img2files: img2files.o dir.o
-txd2png: txd2png.o txd.o lodepng.o base64.o
+txd2png: txd2png.o lodepng.o base64.o $(LIBRW)
 dff2glr: dff2glr.o dff.o Clump.o dir.o txd.o lodepng.o base64.o
 
 js: txd.js dff2glr.js
@@ -40,6 +49,11 @@ img: img2files
 	mkdir -p img
 	cd img && ../img2files $(GTA3)/models/gta3 && cd ..
 	cp $(GTA3)/models/*.txd $(GTA3)/models/*.TXD img
+
+txd: img txd2png
+	mkdir -p txd
+	cd txd && ls ../img/*.txd ../img/*.TXD | xargs -tn1 ../txd2png && cd ..
+	touch txd
 
 ipl: ipl2glr.js dff2glr.js
 	mkdir -p ipl
