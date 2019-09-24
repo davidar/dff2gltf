@@ -10,3 +10,6 @@
 [submodule "librw"]
 	path = librw
 	url = https://github.com/aap/librw.git
+[submodule "librwgta"]
+	path = librwgta
+	url = https://github.com/aap/librwgta.git

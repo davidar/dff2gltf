@@ -1,155 +1,200 @@
 #include <algorithm>
+#include <cassert>
 #include <numeric>
 
-#include <glm/glm.hpp>
+#include <GL/gl.h>
+#include <rw.h>
+#include <rwgta.h>
 
 #include "base64.h"
-#include "dff.h"
 #include "io.h"
-#include "txd.h"
+#include "lodepng.h"
 
-std::string printAttribute(int i, const AtomicPtr &atomic) {
-    auto &geom = atomic->getGeometry();
-    auto &name = atomic->getFrame()->getName();
-    glm::vec3 minPos = std::accumulate(
-        std::next(geom->verts.begin()), geom->verts.end(), geom->verts[0].position,
-        [](glm::vec3 a, const GeometryVertex &v) { return glm::min(a, v.position); });
-    glm::vec3 maxPos = std::accumulate(
-        std::next(geom->verts.begin()), geom->verts.end(), geom->verts[0].position,
-        [](glm::vec3 a, const GeometryVertex &v) { return glm::max(a, v.position); });
+std::pair<std::string, std::string> printAtomic(rw::Atomic *atomic) {
+    rw::Geometry *geom = atomic->geometry;
+    char *name = gta::getNodeName(atomic->getFrame());
 
     std::string out = "";
-    out += ssprintf("{\"bufferView\": {\"buffer\": ");
-    size_t attrLength = sizeof(GeometryVertex) * geom->verts.size();
-    out += ssprintf("{\"name\": \"%s.attributes\"}", name.c_str());
-    out += ssprintf(", \"target\": %d, \"byteLength\": %lu, \"byteStride\": %lu}\n",
-            GL_ARRAY_BUFFER, attrLength, sizeof(GeometryVertex));
+    std::string named = "";
 
-    auto attr = GeometryVertex::vertex_attributes()[i];
-    out += ssprintf(", \"type\": \"VEC%d\", \"byteOffset\": %lu, \"componentType\": %d, \"count\": %lu",
-            attr.size, attr.offset, attr.type, geom->verts.size());
-    if (attr.sem == ATRS_Position) {
-        out += ssprintf(", \"min\": [%.9g,%.9g,%.9g]", minPos.x, minPos.y, minPos.z);
-        out += ssprintf(", \"max\": [%.9g,%.9g,%.9g]", maxPos.x, maxPos.y, maxPos.z);
-    } else if (attr.sem == ATRS_Colour) {
-        out += ssprintf(", \"normalized\": true");
+    assert(geom->morphTargets->vertices);
+    size_t positionsLength = geom->numVertices * sizeof(rw::V3d);
+    std::string uriPositions = "data:application/gltf-buffer;base64," +
+        base64_encode((const unsigned char*)geom->morphTargets->vertices, positionsLength);
+    named += ssprintf("\"%s.positions\": {\"uri\": \"%s\", \"byteLength\": %lu}\n",
+            name, uriPositions.c_str(), positionsLength);
+
+    if (geom->morphTargets->normals) {
+        size_t normalsLength = geom->numVertices * sizeof(rw::V3d);
+        std::string uriNormals = "data:application/gltf-buffer;base64," +
+            base64_encode((const unsigned char*)geom->morphTargets->normals, normalsLength);
+        named += ssprintf(", \"%s.normals\": {\"uri\": \"%s\", \"byteLength\": %lu}\n",
+                name, uriNormals.c_str(), normalsLength);
     }
-    out += ssprintf("}\n");
-    return out;
-}
 
-std::pair<std::string, std::string> printAtomic(const AtomicPtr &atomic, const std::vector<Texture> &textures) {
-    auto &geom = atomic->getGeometry();
-    auto &name = atomic->getFrame()->getName();
-
-    size_t attrLength = sizeof(GeometryVertex) * geom->verts.size();
-    std::string uriAttr = "data:application/gltf-buffer;base64," +
-        base64_encode((const unsigned char*)geom->verts.data(), attrLength);
-    std::string named = "\"" + name + ".attributes\": " +
-        "{\"uri\": \"" + uriAttr + "\", \"byteLength\": " + std::to_string(attrLength) + "}";
-
-    std::vector<uint32_t> indices;
-    for (auto &sg : geom->subgeom) {
-        indices.insert(indices.end(), sg.indices.begin(), sg.indices.end());
+    if (geom->numTexCoordSets) {
+        size_t texCoordsLength = geom->numVertices * sizeof(rw::TexCoords);
+        std::string uriTexCoords = "data:application/gltf-buffer;base64," +
+            base64_encode((const unsigned char*)geom->texCoords[0], texCoordsLength);
+        named += ssprintf(", \"%s.texCoords\": {\"uri\": \"%s\", \"byteLength\": %lu}\n",
+                name, uriTexCoords.c_str(), texCoordsLength);
     }
-    auto indicesLength = indices.size() * sizeof(uint32_t);
-    auto uriIndices = "data:application/gltf-buffer;base64," +
-        base64_encode((const unsigned char*)indices.data(), indicesLength);
-    named += ", \"" + name + ".indices\": " +
-        "{\"uri\": \"" + uriIndices + "\", \"byteLength\": " + std::to_string(indicesLength) + "}";
 
-    std::string out = "";
-    out += ssprintf("{\"name\": \"%s\", \"mesh\": {\"primitives\": [\n", name.c_str());
-    for (auto const &sg : geom->subgeom) {
-        out += ssprintf("{\"mode\": %d", geom->facetype == Geometry::Triangles ? GL_TRIANGLES : GL_TRIANGLE_STRIP);
+    if (geom->colors) {
+        size_t colorsLength = geom->numVertices * sizeof(rw::RGBA);
+        std::string uriColors = "data:application/gltf-buffer;base64," +
+            base64_encode((const unsigned char*)geom->colors, colorsLength);
+        named += ssprintf(", \"%s.colors\": {\"uri\": \"%s\", \"byteLength\": %lu}\n",
+                name, uriColors.c_str(), colorsLength);
+    }
+
+    out += ssprintf("{\"name\": \"%s\", \"mesh\": {\"primitives\": [\n", name);
+    rw::MeshHeader *h = geom->meshHeader;
+    for (int i = 0; i < h->numMeshes; i++) {
+        rw::Mesh *m = h->getMeshes() + i;
+        if (i > 0) out += ssprintf(",");
+
+        out += ssprintf("{\"mode\": %d", (h->flags & rw::MeshHeader::TRISTRIP) ? GL_TRIANGLE_STRIP : GL_TRIANGLES);
         out += ssprintf(", \"attributes\": ");
         out += ssprintf("{ \"POSITION\": ");
-        out += printAttribute(0, atomic);
-        out += ssprintf(", \"NORMAL\": ");
-        out += printAttribute(1, atomic);
-        out += ssprintf(", \"TEXCOORD_0\": ");
-        out += printAttribute(2, atomic);
-        out += ssprintf(", \"COLOR_0\": ");
-        out += printAttribute(3, atomic);
-        out += ssprintf("}");
-        out += ssprintf(", \"indices\": {\"bufferView\": {\"buffer\": ");
-        out += ssprintf("{\"name\": \"%s.indices\"}", name.c_str());
-        out += ssprintf(", \"target\": %d, \"byteOffset\": %lu, \"byteLength\": %lu}\n",
-                GL_ELEMENT_ARRAY_BUFFER, sg.start * sizeof(uint32_t), sizeof(uint32_t) * sg.numIndices);
-        out += ssprintf(", \"type\": \"SCALAR\", \"componentType\": %d, \"count\": %lu}\n",
-                GL_UNSIGNED_INT, sg.numIndices);
+        out += ssprintf("{\"bufferView\": {\"buffer\": ");
+        out += ssprintf("{\"name\": \"%s.positions\"}", name);
+        out += ssprintf(", \"target\": %d, \"byteLength\": %lu}\n",
+                GL_ARRAY_BUFFER, positionsLength);
 
-        int matIndex = sg.material;
-        auto const &mat = geom->materials[matIndex];
-        glm::vec4 c(-1);
-        if ((geom->flags & RW::BSGeometry::ModuleMaterialColor) ==
-                RW::BSGeometry::ModuleMaterialColor) {
-            c = glm::vec4(mat.colour) / 255.0f;
+        out += ssprintf(", \"type\": \"VEC3\", \"componentType\": %d, \"count\": %lu",
+                GL_FLOAT, geom->numVertices);
+        out += ssprintf(", \"min\": [-9,-9,-9]");
+        out += ssprintf(", \"max\": [9,9,9]");
+        out += ssprintf("}\n");
+
+        if (geom->morphTargets->normals) {
+            out += ssprintf(", \"NORMAL\": ");
+            size_t normalsLength = geom->numVertices * sizeof(rw::V3d);
+
+            out += ssprintf("{\"bufferView\": {\"buffer\": ");
+            out += ssprintf("{\"name\": \"%s.normals\"}", name);
+            out += ssprintf(", \"target\": %d, \"byteLength\": %lu}\n",
+                    GL_ARRAY_BUFFER, normalsLength);
+
+            out += ssprintf(", \"type\": \"VEC3\", \"componentType\": %d, \"count\": %lu",
+                    GL_FLOAT, geom->numVertices);
+            out += ssprintf("}\n");
         }
+
+        if (geom->numTexCoordSets) {
+            out += ssprintf(", \"TEXCOORD_0\": ");
+            size_t texCoordsLength = geom->numVertices * sizeof(rw::TexCoords);
+
+            out += ssprintf("{\"bufferView\": {\"buffer\": ");
+            out += ssprintf("{\"name\": \"%s.texCoords\"}", name);
+            out += ssprintf(", \"target\": %d, \"byteLength\": %lu}\n",
+                    GL_ARRAY_BUFFER, texCoordsLength);
+
+            out += ssprintf(", \"type\": \"VEC2\", \"componentType\": %d, \"count\": %lu",
+                    GL_FLOAT, geom->numVertices);
+            out += ssprintf("}\n");
+        }
+
+        if (geom->colors) {
+            out += ssprintf(", \"COLOR_0\": ");
+            size_t colorsLength = geom->numVertices * sizeof(rw::RGBA);
+
+            out += ssprintf("{\"bufferView\": {\"buffer\": ");
+            out += ssprintf("{\"name\": \"%s.colors\"}", name);
+            out += ssprintf(", \"target\": %d, \"byteLength\": %lu}\n",
+                    GL_ARRAY_BUFFER, colorsLength);
+
+            out += ssprintf(", \"type\": \"VEC4\", \"componentType\": %d, \"count\": %lu",
+                    GL_UNSIGNED_BYTE, geom->numVertices);
+            out += ssprintf(", \"normalized\": true");
+            out += ssprintf("}\n");
+        }
+        out += ssprintf("}");
+
+        size_t indicesLength = m->numIndices * sizeof(uint16_t);
+        std::string uriIndices = "data:application/gltf-buffer;base64," +
+            base64_encode((const unsigned char*)m->indices, indicesLength);
+        named += ssprintf(", \"%s.indices_%d\": {\"uri\": \"%s\", \"byteLength\": %lu}\n",
+                name, i, uriIndices.c_str(), indicesLength);
+
+        out += ssprintf(", \"indices\": {\"bufferView\": {\"buffer\": ");
+        out += ssprintf("{\"name\": \"%s.indices_%d\"}", name, i);
+        out += ssprintf(", \"target\": %d, \"byteLength\": %lu}\n",
+                GL_ELEMENT_ARRAY_BUFFER, indicesLength);
+        out += ssprintf(", \"type\": \"SCALAR\", \"componentType\": %d, \"count\": %lu}\n",
+                GL_UNSIGNED_SHORT, m->numIndices);
+
+        rw::Material *mat = m->material;
+        rw::RGBA c = mat->color;
         out += ssprintf(", \"material\": {");
-        if (!mat.textures.empty() || c != glm::vec4(-1)) {
-            const Texture *texture = NULL;
-            for (int i = 0; i < textures.size(); i++) {
-                if (!mat.textures.empty() && textures[i].name == mat.textures[0].name) {
-                    texture = &textures[i];
-                    break;
-                }
-            }
-            out += ssprintf("\"pbrMetallicRoughness\": {");
-            out += ssprintf("\"metallicFactor\": 0");
-            if (texture) {
+        out += ssprintf("\"pbrMetallicRoughness\": {");
+        out += ssprintf("\"metallicFactor\": 0");
+        if (mat->texture) {
+            rw::Image *img = mat->texture->raster->toImage();
+            img->unindex();
+
+            if (img->depth < 24) {
+                fprintf(stderr, "Warning: ignoring 16-bit texture %s for atomic %s\n", mat->texture->name, name);
+            } else {
+                bytes png;
+                lodepng::encode(png, img->pixels, img->width, img->height, img->hasAlpha() ? LCT_RGBA : LCT_RGB);
+                std::string uriPNG = "data:image/png;base64," + base64_encode(png.data(), png.size());
+
                 out += ssprintf(", \"baseColorTexture\": {\"index\": {\"source\": ");
                 out += ssprintf("{\"name\": \"%s\", \"uri\": \"%s\"}",
-                        texture->name.c_str(), dataURI(*texture).c_str());
+                        mat->texture->name, uriPNG.c_str());
                 out += ssprintf(", \"sampler\": ");
+                GLint filterConvMap[] = { 0, GL_NEAREST, GL_LINEAR, GL_NEAREST, GL_LINEAR, GL_NEAREST, GL_LINEAR };
                 out += ssprintf("{\"minFilter\": %d, \"magFilter\": %d, ",
-                        texture->minFilter, texture->magFilter);
+                        GL_LINEAR_MIPMAP_LINEAR, filterConvMap[mat->texture->getFilter()]);
+                GLint addressConvMap[] = { 0, GL_REPEAT, GL_MIRRORED_REPEAT, GL_CLAMP, GL_CLAMP_TO_BORDER };
                 out += ssprintf("\"wrapS\": %d, \"wrapT\": %d}\n",
-                        texture->wrapS, texture->wrapT);
+                        addressConvMap[mat->texture->getAddressU()],
+                        addressConvMap[mat->texture->getAddressV()]);
                 out += ssprintf("}}");
-            } else if (!mat.textures.empty()) {
-                fprintf(stderr, "Warning: missing texture %s\n", mat.textures[0].name.c_str());
             }
-            if (c != glm::vec4(-1)) {
-                out += ssprintf(", \"baseColorFactor\": [%g,%g,%g,%g]", c.r,c.g,c.b,c.a);
-            }
-            out += ssprintf("}");
-            if (c != glm::vec4(-1) && c.a < 1) {
-                out += ssprintf(", \"alphaMode\": \"BLEND\"");
-            } else if (texture) {
-                out += ssprintf(", \"alphaMode\": \"%s\"", texture->transparent ? "BLEND" : "OPAQUE");
-            }
-            out += ssprintf(", ");
+
+            img->destroy();
         }
+        out += ssprintf(", \"baseColorFactor\": [%g,%g,%g,%g]",
+                c.red / 255.0f, c.green / 255.0f, c.blue / 255.0f, c.alpha / 255.0f);
+        out += ssprintf("}");
+        if (c.alpha < 0xff) {
+            out += ssprintf(", \"alphaMode\": \"BLEND\"");
+        } else if (mat->texture) {
+            out += ssprintf(", \"alphaMode\": \"%s\"", rw::Raster::formatHasAlpha(mat->texture->raster->format) ? "BLEND" : "OPAQUE");
+        }
+        out += ssprintf(", ");
         out += ssprintf("\"doubleSided\": true}");
         out += ssprintf("}\n");
-        if (&sg != &geom->subgeom.back()) out += ssprintf(",");
     }
     out += ssprintf("]}}");
 
     return std::make_pair(out, named);
 }
 
-std::string printModel(const ClumpPtr model, const std::vector<Texture> &textures) {
+std::string printModel(rw::Clump *model) {
     std::string out = "";
     out += ssprintf("{\"asset\": {\"generator\": \"dff2gltf\", \"version\": \"2.0\"},\n");
     out += ssprintf("\"scene\": {\"nodes\": [{\"children\": [");
     std::string named = "";
-    for (auto const &atomic : model->getAtomics()) {
+    for (rw::LLLink *lnk = model->atomics.link.next; lnk != model->atomics.end(); lnk = lnk->next) {
+        rw::Atomic *atomic = rw::Atomic::fromClump(lnk);
         std::string json, bufs;
-        std::tie(json, bufs) = printAtomic(atomic, textures);
+        std::tie(json, bufs) = printAtomic(atomic);
         out += json;
         named += bufs;
-        if (&atomic != &model->getAtomics().back()) {
+        if (lnk->next != model->atomics.end()) {
             out += ssprintf(",");
             named += ",";
         }
     }
     out += ssprintf("]");
     if (model->getFrame()) {
-        out += ssprintf(", \"name\": \"%s\"", model->getFrame()->getName().c_str());
+        out += ssprintf(", \"name\": \"%s\"", gta::getNodeName(model->getFrame()));
     }
-    out += ssprintf(", \"rotation\": [-0.5,0.5,0.5,0.5]}]}");
+    out += ssprintf(", \"rotation\": [-0.5,0.5,0.5,0.5]}]}\n");
     out += ssprintf(", \"named\": {%s}", named.c_str());
     out += ssprintf("}\n");
     return out;
@@ -163,28 +208,62 @@ EMSCRIPTEN_BINDINGS(dff2glr) {
 }
 #else
 int main(int argc, char **argv) {
-    std::string dff(argv[1]);
-    std::string txd(argv[2]);
-        std::string gta3 = getenv("GTA3");
-        gta3.erase(std::remove(gta3.begin(), gta3.end(), '\\'), gta3.end());
-        auto dirPath = gta3 + "/models/gta3.dir";
-        auto assets = loadDIR(readfile(dirPath));
+    rw::Engine::init();
+    gta::attachPlugins();
+    rw::Engine::open();
+    rw::Engine::start(nil);
+    rw::Texture::setLoadTextures(false);
 
-        auto imgPath = gta3 + "/models/gta3.img";
+    std::string dffName(argv[1]);
+    std::string txdName(argv[2]);
+    assert(getenv("GTA3"));
+    std::string gta3 = getenv("GTA3");
+    gta3.erase(std::remove(gta3.begin(), gta3.end(), '\\'), gta3.end());
+    auto dirPath = gta3 + "/models/gta3.dir";
+    auto assets = loadDIR(readfile(dirPath));
 
-        auto asset = findEntry(assets, dff + ".dff");
-        auto model = loadDFF(readimg(imgPath, asset));
+    auto imgPath = gta3 + "/models/gta3.img";
 
-        bytes txdata;
-        if (txd == "generic") {
-            readfile(gta3 + "/models/generic.txd", txdata);
-        } else {
-            auto asset = findEntry(assets, txd + ".txd");
-            readimg(imgPath, asset, txdata);
-        }
-        auto textures = loadTXD(txdata);
+    bytes txdata;
+    if (txdName == "generic") {
+        readfile(gta3 + "/models/generic.txd", txdata);
+    } else {
+        auto asset = findEntry(assets, txdName + ".txd");
+        readimg(imgPath, asset, txdata);
+    }
 
-        auto out = printModel(model, textures);
-        printf("%s", out.c_str());
+    rw::StreamMemory in;
+    in.open(txdata.data(), txdata.size());
+
+    rw::ChunkHeaderInfo header;
+    readChunkHeaderInfo(&in, &header);
+    assert(header.type == rw::ID_TEXDICTIONARY);
+
+    rw::TexDictionary *txd = rw::TexDictionary::streamRead(&in);
+    assert(txd);
+    in.close();
+    rw::TexDictionary::setCurrent(txd);
+
+    auto asset = findEntry(assets, dffName + ".dff");
+    auto data = readimg(imgPath, asset);
+    in.open(data.data(), data.size());
+
+    rw::currentUVAnimDictionary = NULL;
+    readChunkHeaderInfo(&in, &header);
+    if (header.type == rw::ID_UVANIMDICT) {
+        rw::UVAnimDictionary *dict = rw::UVAnimDictionary::streamRead(&in);
+        rw::currentUVAnimDictionary = dict;
+        readChunkHeaderInfo(&in, &header);
+    }
+    if (header.type != rw::ID_CLUMP) {
+        in.close();
+        return 0;
+    }
+    rw::Clump *c = rw::Clump::streamRead(&in);
+    in.close();
+    assert(c);
+
+    auto out = printModel(c);
+    printf("%s", out.c_str());
 }
 #endif

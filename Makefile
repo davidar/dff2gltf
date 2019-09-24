@@ -1,22 +1,25 @@
 CC = clang++
 CXX = clang++
 DEBUG_FLAGS = -g -fsanitize=address
-CXXFLAGS = -Iglm -Ilibrw -std=c++14 -Werror -fno-exceptions $(DEBUG_FLAGS)
+CXXFLAGS = -Iglm -Ilibrw -Ilibrwgta/src -std=c++14 -Werror -fno-exceptions $(DEBUG_FLAGS)
 LDFLAGS = $(DEBUG_FLAGS)
 EMFLAGS = -s ALLOW_MEMORY_GROWTH=1
 export PATH := $(PWD):$(PATH)
 
 LIBRW_PLATFORM = linux-amd64-null
 LIBRW = librw/lib/$(LIBRW_PLATFORM)/Release/librw.a
+LIBRWGTA = librwgta/lib/$(LIBRW_PLATFORM)/Release/librwgta.a
 
 all: img2files txd2png dff2glr
 
 $(LIBRW):
 	cd librw && premake5 gmake && $(MAKE) -C build config=release_$(LIBRW_PLATFORM)
+$(LIBRWGTA):
+	cd librwgta && LIBRW=../librw premake5 gmake && $(MAKE) -C build config=release_$(LIBRW_PLATFORM) librwgta
 
 img2files: img2files.o dir.o
 txd2png: txd2png.o lodepng.o base64.o $(LIBRW)
-dff2glr: dff2glr.o dff.o Clump.o dir.o txd.o lodepng.o base64.o
+dff2glr: dff2glr.o dir.o lodepng.o base64.o $(LIBRWGTA) $(LIBRW)
 
 js: txd.js dff2glr.js
 
