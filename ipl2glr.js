@@ -3,6 +3,9 @@
 
 const fs = require('fs')
 const path = require('path')
+const child_process = require('child_process')
+
+/*
 const Module = require('./dff2glr.js')
 
 Module.onRuntimeInitialized = main
@@ -32,6 +35,11 @@ function dff2glr(dff, txd) {
   let textures = Module.loadTXD(Module.to_bytes(assetTXD))
 
   return Module.printModel(model, textures)
+}
+*/
+
+function dff2glr(dff, txd) {
+  return child_process.execFileSync('dff2glr', [dff, txd])
 }
 
 function read(fname, cb) {
@@ -116,3 +124,5 @@ function main() {
 
   fs.writeFileSync(name + '.glr', JSON.stringify(model, null, 2))
 }
+
+main()

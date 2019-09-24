@@ -1,6 +1,6 @@
 CC = clang++
 CXX = clang++
-DEBUG_FLAGS = -g -fsanitize=address
+DEBUG_FLAGS = -g #-fsanitize=address
 CXXFLAGS = -Iglm -Ilibrw -Ilibrwgta/src -std=c++14 -Werror -fno-exceptions $(DEBUG_FLAGS)
 LDFLAGS = $(DEBUG_FLAGS)
 EMFLAGS = -s ALLOW_MEMORY_GROWTH=1
@@ -58,7 +58,7 @@ txd: img txd2png
 	cd txd && ls ../img/*.txd ../img/*.TXD | xargs -tn1 ../txd2png && cd ..
 	touch txd
 
-ipl: ipl2glr.js dff2glr.js
+ipl: ipl2glr.js dff2glr
 	mkdir -p ipl
 	cd ipl && for f in $(IPL); do echo "$$f"; ../ipl2glr.js "$$f.ipl" "`dirname "$$f"`/`basename "$$f" | tr A-Z a-z`.ide"; done
 	cd ipl && ../ipl2glr.js $(GTA3)/data/maps/overview.ipl && ../ipl2glr.js $(GTA3)/data/maps/props.IPL
