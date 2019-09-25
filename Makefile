@@ -1,14 +1,15 @@
 CC = clang++
 CXX = clang++
 DEBUG_FLAGS = -g #-fsanitize=address
-CXXFLAGS = -Iglm -Ilibrw -Ilibrwgta/src -std=c++14 -Werror -fno-exceptions $(DEBUG_FLAGS)
+CXXFLAGS = -Iglm -Ilibrw -Ilibrwgta/src -std=c++14 -fno-exceptions $(DEBUG_FLAGS)
 LDFLAGS = $(DEBUG_FLAGS)
-EMFLAGS = -s ALLOW_MEMORY_GROWTH=1
+EMFLAGS = -s ALLOW_MEMORY_GROWTH=1 -s EXTRA_EXPORTED_RUNTIME_METHODS='["UTF8ToString"]'
 export PATH := $(PWD):$(PATH)
 
 LIBRW_PLATFORM = linux-amd64-null
 LIBRW = librw/lib/$(LIBRW_PLATFORM)/Release/librw.a
 LIBRWGTA = librwgta/lib/$(LIBRW_PLATFORM)/Release/librwgta.a
+LIBRW_SOURCES = $(shell ls librw/src/*.cpp librw/src/*/*.cpp librwgta/src/*.cpp)
 
 all: img2files txd2png dff2glr
 
@@ -21,13 +22,16 @@ img2files: img2files.o dir.o
 txd2png: txd2png.o lodepng.o base64.o $(LIBRW)
 dff2glr: dff2glr.o dir.o lodepng.o base64.o $(LIBRWGTA) $(LIBRW)
 
-js: txd.js dff2glr.js
+js: txd.js dff2glr.js rw.js
 
 txd.js: txd.cc common.cc lodepng.cpp base64.cpp
 	em++ $(CXXFLAGS) $(EMFLAGS) $^ -o $@ --bind
 
 dff2glr.js: dff2glr.cc common.cc dff.cc Clump.cpp dir.cc txd.cc lodepng.cpp base64.cpp
 	em++ $(CXXFLAGS) $(EMFLAGS) $^ -o $@ --bind
+
+rw.js: librw-bindings.cc $(LIBRW_SOURCES)
+	em++ $(CXXFLAGS) $(EMFLAGS) $^ -o $@
 
 data:
 	mkdir -p data/models
