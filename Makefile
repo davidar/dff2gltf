@@ -13,9 +13,9 @@ LIBRW_SOURCES = $(shell ls librw/src/*.cpp librw/src/*/*.cpp librwgta/src/*.cpp)
 
 all: img2files txd2png dff2glr
 
-$(LIBRW):
+$(LIBRW): $(LIBRW_SOURCES)
 	cd librw && premake5 gmake && $(MAKE) -C build config=release_$(LIBRW_PLATFORM)
-$(LIBRWGTA):
+$(LIBRWGTA): $(LIBRW_SOURCES)
 	cd librwgta && LIBRW=../librw premake5 gmake && $(MAKE) -C build config=release_$(LIBRW_PLATFORM) librwgta
 
 img2files: img2files.o dir.o
@@ -27,7 +27,7 @@ js: txd.js dff2glr.js rw.js
 txd.js: txd.cc common.cc lodepng.cpp base64.cpp
 	em++ $(CXXFLAGS) $(EMFLAGS) $^ -o $@ --bind
 
-dff2glr.js: dff2glr.cc common.cc dff.cc Clump.cpp dir.cc txd.cc lodepng.cpp base64.cpp
+dff2glr.js: dff2glr.cc common.cc dir.cc lodepng.cpp base64.cpp librw-bindings.cc $(LIBRW_SOURCES)
 	em++ $(CXXFLAGS) $(EMFLAGS) $^ -o $@ --bind
 
 rw.js: librw-bindings.cc $(LIBRW_SOURCES)

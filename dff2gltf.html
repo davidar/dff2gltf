@@ -81,14 +81,62 @@
       let range = 'bytes=' + (2048 * asset.offset) + '-' + (2048 * (asset.offset + asset.size))
       return fetch('/data/models/gta3.img', { headers: { 'Range': range }})
     }
-    function renderModel(dff, txd) {
+    function renderModel(dffBuffer, txdBuffer) {
       try {
-        let textures = Module.loadTXD(Module.to_bytes(txd))
-        let model = Module.loadDFF(Module.to_bytes(dff))
-        let out = Module.printModel(model, textures)
-        let gltf = glr2gltf(out)
-        var loader = new THREE.GLTFLoader()
-        loader.load('data:application/json,' + encodeURIComponent(JSON.stringify(gltf)), setup)
+        Module._rw_Engine_init()
+        Module._gta_attachPlugins();
+        Module._rw_Engine_open()
+        Module._rw_Engine_start(0)
+        Module._rw_Texture_setLoadTextures(0)
+
+        let stream = Module._rw_StreamMemory_new()
+        let data = Module._malloc(txdBuffer.byteLength)
+        Module.HEAP8.set(new Int8Array(txdBuffer), data)
+        Module._rw_StreamMemory_open(stream, data, txdBuffer.byteLength)
+
+        let header = Module._rw_ChunkHeaderInfo_new()
+        Module._rw_readChunkHeaderInfo(stream, header)
+        const ID_TEXDICTIONARY = 22
+        console.assert(Module._rw_ChunkHeaderInfo_type(header) === ID_TEXDICTIONARY,
+          'header.type == ID_TEXDICTIONARY')
+
+        let txd = Module._rw_TexDictionary_streamRead(stream)
+        console.assert(txd, 'txd')
+        Module._rw_TexDictionary_setCurrent(txd)
+
+        Module._rw_StreamMemory_close(stream)
+        Module._free(data)
+
+        data = Module._malloc(dffBuffer.byteLength)
+        Module.HEAP8.set(new Int8Array(dffBuffer), data)
+        Module._rw_StreamMemory_open(stream, data, dffBuffer.byteLength)
+
+        Module._rw_currentUVAnimDictionary_set(0)
+        Module._rw_readChunkHeaderInfo(stream, header)
+        const ID_UVANIMDICT = 43
+        if (Module._rw_ChunkHeaderInfo_type(header) === ID_UVANIMDICT) {
+          let dict = Module._rw_UVAnimDictionary_streamRead(stream)
+          Module._rw_currentUVAnimDictionary_set(dict)
+          Module._rw_readChunkHeaderInfo(stream, header)
+        }
+
+        const ID_CLUMP = 16
+        if (Module._rw_ChunkHeaderInfo_type(header) === ID_CLUMP) {
+          let clump = Module._rw_Clump_streamRead(stream)
+          console.assert(clump, 'clump')
+
+          let out = Module.UTF8ToString(Module._printModelC(clump))
+          Module._rw_Clump_destroy(clump)
+
+          let gltf = glr2gltf(out)
+          var loader = new THREE.GLTFLoader()
+          loader.load('data:application/json,' + encodeURIComponent(JSON.stringify(gltf)), setup)
+        }
+
+        Module._rw_ChunkHeaderInfo_delete(header)
+        Module._rw_StreamMemory_close(stream)
+        Module._free(data)
+        Module._rw_StreamMemory_delete(stream)
       } catch(e) {
         console.error(e)
       }

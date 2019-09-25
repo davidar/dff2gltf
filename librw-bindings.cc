@@ -1,15 +1,21 @@
 #include <emscripten.h>
 #include <rw.h>
+#include <rwgta.h>
 
 #define A EMSCRIPTEN_KEEPALIVE
 
 extern "C" {
+A void rw_currentUVAnimDictionary_set(rw::UVAnimDictionary *v)
+    { rw::currentUVAnimDictionary = v; }
 A bool rw_readChunkHeaderInfo(rw::Stream *s, rw::ChunkHeaderInfo *h)
     { return rw::readChunkHeaderInfo(s, h); }
 
 A rw::ChunkHeaderInfo *rw_ChunkHeaderInfo_new() { return new rw::ChunkHeaderInfo(); }
 A uint32_t rw_ChunkHeaderInfo_type(rw::ChunkHeaderInfo *self) { return self->type; }
 A void rw_ChunkHeaderInfo_delete(rw::ChunkHeaderInfo *self) { delete self; }
+
+A rw::Clump *rw_Clump_streamRead(rw::Stream *s) { return rw::Clump::streamRead(s); }
+A void rw_Clump_destroy(rw::Clump *self) { self->destroy(); }
 
 A bool rw_Engine_init() { return rw::Engine::init(); }
 A bool rw_Engine_open() { return rw::Engine::open(); }
@@ -43,8 +49,14 @@ A void rw_TexDictionary_setCurrent(rw::TexDictionary *txd)
 A rw::LinkList *rw_TexDictionary_textures(rw::TexDictionary *self)
     { return &self->textures; }
 
+A void rw_Texture_setCreateDummies(bool b) { rw::Texture::setCreateDummies(b); }
 A void rw_Texture_setLoadTextures(bool b) { rw::Texture::setLoadTextures(b); }
 A rw::Texture *rw_Texture_fromDict(rw::LLLink *lnk) { return rw::Texture::fromDict(lnk); }
 A rw::Raster *rw_Texture_raster(rw::Texture *self) { return self->raster; }
 A char *rw_Texture_name(rw::Texture *self) { return self->name; }
+
+A rw::UVAnimDictionary *rw_UVAnimDictionary_streamRead(rw::Stream *s)
+    { return rw::UVAnimDictionary::streamRead(s); }
+
+A void gta_attachPlugins() { gta::attachPlugins(); }
 }

@@ -23,6 +23,7 @@
             const ID_TEXDICTIONARY = 22
             console.assert(Module._rw_ChunkHeaderInfo_type(header) === ID_TEXDICTIONARY,
               'header.type == ID_TEXDICTIONARY')
+            Module._rw_ChunkHeaderInfo_delete(header)
 
             let txd = Module._rw_TexDictionary_streamRead(stream)
             console.assert(txd, 'txd')
@@ -38,10 +39,10 @@
                 ;    lnk = Module._rw_LLLink_next(lnk)) {
               let tex = Module._rw_Texture_fromDict(lnk)
               let raster = Module._rw_Texture_raster(tex)
+              let name = Module.UTF8ToString(Module._rw_Texture_name(tex))
               let img = Module._rw_Raster_toImage(raster)
               Module._rw_Image_unindex(img)
               let depth = Module._rw_Image_depth(img)
-              let name = Module.UTF8ToString(Module._rw_Texture_name(tex))
 
               if (depth < 24) {
                 console.warn('ignoring 16-bit texture', name)

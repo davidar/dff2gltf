@@ -201,10 +201,11 @@ std::string printModel(rw::Clump *model) {
 }
 
 #ifdef __EMSCRIPTEN__
-#include <emscripten/bind.h>
-using namespace emscripten;
-EMSCRIPTEN_BINDINGS(dff2glr) {
-    function("printModel", &printModel);
+#include <emscripten.h>
+extern "C" {
+    EMSCRIPTEN_KEEPALIVE const char *printModelC(rw::Clump *model) {
+        return printModel(model).c_str();
+    }
 }
 #else
 int main(int argc, char **argv) {
@@ -264,6 +265,7 @@ int main(int argc, char **argv) {
     assert(c);
 
     auto out = printModel(c);
+    c->destroy();
     printf("%s", out.c_str());
 }
 #endif
