@@ -22,6 +22,7 @@ A bool rw_Engine_open() { return rw::Engine::open(); }
 A bool rw_Engine_start(rw::EngineStartParams *p) { return rw::Engine::start(p); }
 
 A void rw_Image_unindex(rw::Image *self) { self->unindex(); }
+A int32_t rw_Image_bpp(rw::Image *self) { return self->bpp; }
 A int32_t rw_Image_depth(rw::Image *self) { return self->depth; }
 A uint8_t *rw_Image_pixels(rw::Image *self) { return self->pixels; }
 A int32_t rw_Image_width(rw::Image *self) { return self->width; }
@@ -29,7 +30,6 @@ A int32_t rw_Image_height(rw::Image *self) { return self->height; }
 A bool rw_Image_hasAlpha(rw::Image *self) { return self->hasAlpha(); }
 A void rw_Image_destroy(rw::Image *self) { self->destroy(); }
 
-A rw::LLLink *rw_LinkList_begin(rw::LinkList *self) { return self->link.next; }
 A rw::LLLink *rw_LinkList_end(rw::LinkList *self) { return self->end(); }
 
 A rw::LLLink *rw_LLLink_next(rw::LLLink *self) { return self->next; }

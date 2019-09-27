@@ -1,4 +1,4 @@
-*
+/*
 !.gitignore
-!/data/
-!*.wasm
+!/data
+!/wasm

@@ -3,7 +3,7 @@ CXX = clang++
 DEBUG_FLAGS = -g #-fsanitize=address
 CXXFLAGS = -Iglm -Ilibrw -Ilibrwgta/src -std=c++14 -fno-exceptions $(DEBUG_FLAGS)
 LDFLAGS = $(DEBUG_FLAGS)
-EMFLAGS = -s ALLOW_MEMORY_GROWTH=1 -s MODULARIZE=1 -s EXPORT_NAME=RW -s EXTRA_EXPORTED_RUNTIME_METHODS='["UTF8ToString"]'
+EMFLAGS = -s ALLOW_MEMORY_GROWTH=1 -s MODULARIZE=1 -s EXTRA_EXPORTED_RUNTIME_METHODS='["UTF8ToString"]'
 export PATH := $(PWD):$(PATH)
 
 LIBRW_PLATFORM = linux-amd64-null
