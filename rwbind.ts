@@ -1,6 +1,6 @@
 import Module from "./rw";
 
-let M = null;
+export let M = null; // TODO no export
 
 export class NullPointerException {}
 
@@ -195,15 +195,37 @@ export class Image extends CObject {
   }
 }
 
+export class UVAnimDictionary extends CObject {
+  static streamRead(stream: Stream) {
+    return new UVAnimDictionary(M._rw_UVAnimDictionary_streamRead(stream.ptr));
+  }
+  static set current(d: UVAnimDictionary) {
+    let p = (d === null) ? 0 : d.ptr;
+    M._rw_currentUVAnimDictionary_set(p);
+  }
+}
+
+export class Clump extends CObject {
+  static streamRead(stream: Stream) {
+    return new Clump(M._rw_Clump_streamRead(stream.ptr));
+  }
+  delete() {
+    M._rw_Clump_destroy(this.ptr);
+    super.delete();
+  }
+}
+
 interface InitOpt {
   locateFile?(path: string, prefix: string): string;
   loadTextures?: boolean;
+  gtaPlugins?: boolean;
 }
 
 export function init(opt: InitOpt) {
   return new Promise(resolve => Module(opt).then(module => {
     M = module;
     M._rw_Engine_init();
+    if (opt.gtaPlugins) M._gta_attachPlugins();
     M._rw_Engine_open();
     M._rw_Engine_start(0);
     if (opt.loadTextures) M._rw_Texture_setLoadTextures(opt.loadTextures ? 1 : 0);

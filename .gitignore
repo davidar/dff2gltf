@@ -4,9 +4,13 @@ txd2png
 dff2glr
 *.bin
 /data/
+/img/
 /ipl/
 node_modules
+/.cache
 *.log
+/rw.js
+/rw.was*
 
 # Prerequisites
 *.d

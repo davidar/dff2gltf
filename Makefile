@@ -22,13 +22,8 @@ img2files: img2files.o dir.o
 txd2png: txd2png.o lodepng.o base64.o $(LIBRW)
 dff2glr: dff2glr.o dir.o lodepng.o base64.o $(LIBRWGTA) $(LIBRW)
 
-js: dff2glr.js rw.js
-
-dff2glr.js: dff2glr.cc common.cc dir.cc lodepng.cpp base64.cpp librw-bindings.cc $(LIBRW_SOURCES)
+rw.js: librw-bindings.cc $(LIBRW_SOURCES) dff2glr.cc common.cc dir.cc lodepng.cpp base64.cpp
 	em++ $(CXXFLAGS) $(EMFLAGS) $^ -o $@ --bind
-
-rw.js: librw-bindings.cc $(LIBRW_SOURCES)
-	em++ $(CXXFLAGS) $(EMFLAGS) $^ -o $@
 
 data:
 	mkdir -p data/models
