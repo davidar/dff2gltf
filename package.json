@@ -1,9 +1,11 @@
 {
   "devDependencies": {
+    "@types/base64-js": "^1.2.5",
     "parcel-bundler": "^1.12.3",
     "typescript": "^3.6.3"
   },
   "dependencies": {
+    "base64-js": "^1.2.3",
     "three": "^0.108.0"
   },
   "browserslist": [

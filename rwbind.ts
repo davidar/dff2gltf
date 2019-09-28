@@ -5,7 +5,7 @@ function UTF8ToString(array: Uint8Array) {
   return new TextDecoder().decode(array.subarray(0, length));
 }
 
-export let M = null; // TODO no export
+let M = null;
 
 export class NullPointerException {}
 

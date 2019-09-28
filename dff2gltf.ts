@@ -1,6 +1,8 @@
 import * as THREE from "three";
+import { TypedArray } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
+import * as base64js from "base64-js";
 
 import * as rw from "./rwbind";
 import { glr2gltf } from "./glr";
@@ -115,10 +117,207 @@ function loadTXD(buf: ArrayBuffer) {
   stream.delete();
 }
 
-async function renderModel(dffBuffer: ArrayBuffer, txdBuffer: ArrayBuffer, printModel) {
-  loadTXD(txdBuffer);
+function bufferURI(array: TypedArray) {
+  let bytes = new Uint8Array(array.buffer, array.byteOffset, array.byteLength);
+  return "data:application/gltf-buffer;base64," + base64js.fromByteArray(bytes);
+}
 
-  let stream = new rw.StreamMemory(dffBuffer);
+const GL = WebGLRenderingContext;
+const addressConvMap = [null, GL.REPEAT, GL.MIRRORED_REPEAT, GL.CLAMP, GL.CLAMP_TO_BORDER];
+
+function glrAtomic(atomic: rw.Atomic, named) {
+  let geom = atomic.geometry;
+  let name = atomic.frame.name.toLowerCase();
+
+  let positions = geom.morphTarget(0).vertices;
+  let attributes: {POSITION: any, NORMAL?: any, TEXCOORD_0?: any, COLOR_0?: any} = {
+    POSITION: {
+      bufferView: {
+        buffer: { name: name + ".positions" },
+        target: GL.ARRAY_BUFFER,
+        byteLength: positions.byteLength
+      },
+      type: "VEC3",
+      componentType: GL.FLOAT,
+      count: geom.numVertices,
+      min: [-9, -9, -9],
+      max: [9, 9, 9]
+    }
+  };
+  named[name + ".positions"] = {
+    byteLength: positions.byteLength,
+    uri: bufferURI(positions)
+  };
+
+  let normals = geom.morphTarget(0).normals;
+  if (normals) {
+    attributes.NORMAL = {
+      bufferView: {
+        buffer: { name: name + ".normals" },
+        target: GL.ARRAY_BUFFER,
+        byteLength: normals.byteLength
+      },
+      type: "VEC3",
+      componentType: GL.FLOAT,
+      count: geom.numVertices
+    };
+    named[name + ".normals"] = {
+      byteLength: normals.byteLength,
+      uri: bufferURI(normals)
+    };
+  }
+
+  if (geom.numTexCoordSets) {
+    let texCoords = geom.texCoords(0);
+    attributes.TEXCOORD_0 = {
+      bufferView: {
+        buffer: { name: name + ".texCoords" },
+        target: GL.ARRAY_BUFFER,
+        byteLength: texCoords.byteLength
+      },
+      type: "VEC2",
+      componentType: GL.FLOAT,
+      count: geom.numVertices
+    };
+    named[name + ".texCoords"] = {
+      byteLength: texCoords.byteLength,
+      uri: bufferURI(texCoords)
+    }
+  }
+
+  let colors = geom.colors;
+  if (colors) {
+    attributes.COLOR_0 = {
+      bufferView: {
+        buffer: { name: name + ".colors" },
+        target: GL.ARRAY_BUFFER,
+        byteLength: colors.byteLength
+      },
+      type: "VEC4",
+      componentType: GL.UNSIGNED_BYTE,
+      count: geom.numVertices,
+      normalized: true
+    };
+    named[name + ".colors"] = {
+      byteLength: colors.byteLength,
+      uri: bufferURI(colors)
+    }
+  }
+
+  let primitives = [];
+  let h = geom.meshHeader;
+  for (let i = 0; i < h.numMeshes; i++) {
+    let m = h.mesh(i);
+    let indices = m.indices;
+    let mat = m.material;
+    let col = mat.color;
+
+    let pbrMetallicRoughness: {metallicFactor: number,
+                               baseColorFactor: number[],
+                               baseColorTexture?: any} = {
+      metallicFactor: 0,
+      baseColorFactor: [col[0]/0xff, col[1]/0xff, col[2]/0xff, col[3]/0xff]
+    };
+    if (mat.texture) {
+      let img = mat.texture.raster.toImage();
+      img.unindex();
+
+      if (img.depth < 24) {
+        console.warn("ignoring 16-bit texture", mat.texture.name, "for atomic", name);
+      } else {
+        let c = document.createElement("canvas");
+        c.width = img.width;
+        c.height = img.height;
+
+        let ctx = c.getContext("2d");
+        let buf = ctx.createImageData(img.width, img.height);
+        let pixels = img.pixels();
+        if (img.hasAlpha()) {
+          buf.data.set(pixels);
+        } else {
+          for (let i = 0, j = 0; i < buf.data.length;) {
+            buf.data[i++] = pixels[j++];
+            buf.data[i++] = pixels[j++];
+            buf.data[i++] = pixels[j++];
+            buf.data[i++] = 0xff;
+          }
+        }
+        ctx.putImageData(buf, 0, 0);
+
+        pbrMetallicRoughness.baseColorTexture = {
+          index: {
+            source: {
+              name: mat.texture.name,
+              uri: c.toDataURL()
+            },
+            sampler: {
+              minFilter: GL.LINEAR_MIPMAP_LINEAR,
+              magFilter: (mat.texture.filter % 2) ? GL.NEAREST : GL.LINEAR,
+              wrapS: addressConvMap[mat.texture.addressU],
+              wrapT: addressConvMap[mat.texture.addressV]
+            }
+          }
+        }
+      }
+
+      img.delete();
+    }
+
+    let alphaMode = "OPAQUE";
+    if (mat.color[3] < 0xff || (mat.texture &&
+        rw.Raster.formatHasAlpha(mat.texture.raster.format))) {
+      alphaMode = "BLEND";
+    }
+
+    primitives.push({
+      mode: h.tristrip ? GL.TRIANGLE_STRIP : GL.TRIANGLES,
+      attributes,
+      indices: {
+        bufferView: {
+          buffer: { name: name + ".indices_" + i },
+          target: GL.ELEMENT_ARRAY_BUFFER,
+          byteLength: indices.byteLength
+        },
+        type: "SCALAR",
+        componentType: GL.UNSIGNED_SHORT,
+        count: m.numIndices
+      },
+      material: {
+        pbrMetallicRoughness,
+        alphaMode,
+        doubleSided: true
+      }
+    })
+
+    named[name + ".indices_" + i] = {
+      byteLength: indices.byteLength,
+      uri: bufferURI(indices)
+    }
+  }
+
+  return { name, mesh: { primitives } };
+}
+
+function glrClump(model: rw.Clump) {
+  let nodes = [];
+  let named = {};
+  for (let lnk = model.atomics.begin; !lnk.is(model.atomics.end); lnk = lnk.next) {
+    let atomic = rw.Atomic.fromClump(lnk);
+    nodes.push(glrAtomic(atomic, named));
+  }
+  return {
+    asset: { generator: "dff2gltf", version: "2.0" },
+    scene: { nodes: [{
+      name: model.frame.name.toLowerCase(),
+      children: nodes,
+      rotation: [-0.5,0.5,0.5,0.5]
+    }]},
+    named
+  };
+}
+
+async function renderModel(buf: ArrayBuffer) {
+  let stream = new rw.StreamMemory(buf);
   let header = new rw.ChunkHeaderInfo(stream);
 
   rw.UVAnimDictionary.current = null;
@@ -131,7 +330,7 @@ async function renderModel(dffBuffer: ArrayBuffer, txdBuffer: ArrayBuffer, print
 
   if (header.type === rw.PluginID.ID_CLUMP) {
     let clump = rw.Clump.streamRead(stream);
-    let out = printModel(clump);
+    let out = JSON.stringify(glrClump(clump));
     clump.delete();
 
     let gltf = glr2gltf(out);
@@ -161,8 +360,8 @@ async function main() {
   let assetTXD = assets[urlParams.get("txd").toLowerCase() + ".txd"];
   let dff = await fetchAsset(assetDFF).then(response => response.arrayBuffer())
   let txd = await fetchAsset(assetTXD).then(response => response.arrayBuffer())
-  let printModel = o => UTF8ToString(rw.M.HEAPU8.subarray(rw.M._printModelC(o.ptr)));
-  await renderModel(dff, txd, printModel);
+  loadTXD(txd);
+  await renderModel(dff);
 }
 
 main().catch(console.error);
