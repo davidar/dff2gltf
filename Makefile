@@ -3,7 +3,7 @@ CXX = clang++
 DEBUG_FLAGS = -g #-fsanitize=address
 CXXFLAGS = -Iglm -Ilibrw -Ilibrwgta/src -std=c++14 -fno-exceptions $(DEBUG_FLAGS)
 LDFLAGS = $(DEBUG_FLAGS)
-EMFLAGS = -s ALLOW_MEMORY_GROWTH=1 -s MODULARIZE=1 -s EXTRA_EXPORTED_RUNTIME_METHODS='["UTF8ToString"]'
+EMFLAGS = -s ALLOW_MEMORY_GROWTH=1 -s MODULARIZE=1
 export PATH := $(PWD):$(PATH)
 
 LIBRW_PLATFORM = linux-amd64-null
@@ -22,7 +22,7 @@ img2files: img2files.o dir.o
 txd2png: txd2png.o lodepng.o base64.o $(LIBRW)
 dff2glr: dff2glr.o dir.o lodepng.o base64.o $(LIBRWGTA) $(LIBRW)
 
-rw.js: librw-bindings.cc $(LIBRW_SOURCES) dff2glr.cc common.cc dir.cc lodepng.cpp base64.cpp
+rw.js: librw-bindings.cc $(LIBRW_SOURCES) dff2glr.cc lodepng.cpp base64.cpp
 	em++ $(CXXFLAGS) $(EMFLAGS) $^ -o $@ --bind
 
 data:

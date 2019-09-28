@@ -74,6 +74,32 @@ function animate() {
   renderer.render(scene, camera)
 }
 
+function UTF8ToString(array: Uint8Array) {
+  let length = 0; while (length < array.length && array[length]) length++;
+  return new TextDecoder('utf8').decode(array.subarray(0, length));
+}
+
+interface Asset {
+  offset: number;
+  size: number;
+}
+
+interface Assets {
+  [name: string]: Asset;
+}
+
+function loadDIR(buf: ArrayBuffer) {
+  let assets = {} as Assets;
+  let view = new DataView(buf);
+  for (let i = 0; i < buf.byteLength; i += 32) {
+    let offset = view.getUint32(i + 0, true);
+    let size   = view.getUint32(i + 4, true);
+    let name = UTF8ToString(new Uint8Array(buf, i + 8, 24));
+    assets[name.toLowerCase()] = { offset, size };
+  }
+  return assets;
+}
+
 function fetchAsset(asset) {
   let range = 'bytes=' + (2048 * asset.offset) + '-' + (2048 * (asset.offset + asset.size))
   return fetch('/data/models/gta3.img', { headers: { 'Range': range }})
@@ -119,7 +145,6 @@ async function renderModel(dffBuffer: ArrayBuffer, txdBuffer: ArrayBuffer, print
 
 async function main() {
   init();
-  const urlParams = new URLSearchParams(window.location.search);
   await rw.init({
     gtaPlugins: true,
     loadTextures: false,
@@ -129,20 +154,15 @@ async function main() {
     }
   });
 
-  fetch("/data/models/gta3.dir").then(response => response.arrayBuffer()).then(dir => {
-    try {
-      let assets = rw.M.loadDIR(rw.M.to_bytes(dir));
-      let assetDFF = rw.M.findEntry(assets, urlParams.get("dff") + ".dff");
-      let assetTXD = rw.M.findEntry(assets, urlParams.get("txd") + ".txd");
-      fetchAsset(assetDFF).then(response => response.arrayBuffer()).then(dff => {
-        fetchAsset(assetTXD).then(response => response.arrayBuffer()).then(txd => {
-          renderModel(dff, txd, o => rw.M.UTF8ToString(rw.M._printModelC(o.ptr)));
-        });
-      });
-    } catch (e) {
-      console.error(e);
-    }
-  })
+  const urlParams = new URLSearchParams(window.location.search);
+  let dir = await fetch("/data/models/gta3.dir").then(response => response.arrayBuffer())
+  let assets = loadDIR(dir);
+  let assetDFF = assets[urlParams.get("dff").toLowerCase() + ".dff"];
+  let assetTXD = assets[urlParams.get("txd").toLowerCase() + ".txd"];
+  let dff = await fetchAsset(assetDFF).then(response => response.arrayBuffer())
+  let txd = await fetchAsset(assetTXD).then(response => response.arrayBuffer())
+  let printModel = o => UTF8ToString(rw.M.HEAPU8.subarray(rw.M._printModelC(o.ptr)));
+  await renderModel(dff, txd, printModel);
 }
 
 main().catch(console.error);

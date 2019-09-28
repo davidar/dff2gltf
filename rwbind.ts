@@ -1,5 +1,10 @@
 import Module from "./rw";
 
+function UTF8ToString(array: Uint8Array) {
+  let length = 0; while (length < array.length && array[length]) length++;
+  return new TextDecoder('utf8').decode(array.subarray(0, length));
+}
+
 export let M = null; // TODO no export
 
 export class NullPointerException {}
@@ -153,7 +158,9 @@ export class Texture extends CObject {
     return new Texture(M._rw_Texture_fromDict(lnk.ptr));
   }
   get name(): string {
-    return M.UTF8ToString(M._rw_Texture_name(this.ptr));
+    let p = M._rw_Texture_name(this.ptr);
+    let view = M.HEAPU8.subarray(p);
+    return UTF8ToString(view);
   }
   get raster() {
     return new Raster(M._rw_Texture_raster(this.ptr));
