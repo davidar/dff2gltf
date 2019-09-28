@@ -102,9 +102,9 @@ function loadDIR(buf: ArrayBuffer) {
   return assets;
 }
 
-function fetchAsset(asset) {
-  let range = 'bytes=' + (2048 * asset.offset) + '-' + (2048 * (asset.offset + asset.size))
-  return fetch('/data/models/gta3.img', { headers: { 'Range': range }})
+function fetchAsset(asset: Asset) {
+  let range = "bytes=" + (2048 * asset.offset) + "-" + (2048 * (asset.offset + asset.size));
+  return fetch("/data/models/gta3.img", { headers: { Range: range }});
 }
 
 function loadTXD(buf: ArrayBuffer) {
@@ -316,7 +316,16 @@ function glrClump(model: rw.Clump) {
   };
 }
 
-async function renderModel(buf: ArrayBuffer) {
+let assets = null;
+
+async function dff2glr(dff: string, txd: string) {
+  let assetDFF = assets[dff + ".dff"];
+  let fetchTXD = (txd === "generic")
+    ? fetch("/data/models/generic.txd")
+    : fetchAsset(assets[txd + ".txd"]);
+  loadTXD(await fetchTXD.then(response => response.arrayBuffer()));
+  let buf = await fetchAsset(assetDFF).then(response => response.arrayBuffer());
+
   let stream = new rw.StreamMemory(buf);
   let header = new rw.ChunkHeaderInfo(stream);
 
@@ -328,18 +337,97 @@ async function renderModel(buf: ArrayBuffer) {
     header = new rw.ChunkHeaderInfo(stream);
   }
 
+  let out = null;
   if (header.type === rw.PluginID.ID_CLUMP) {
     let clump = rw.Clump.streamRead(stream);
-    let out = JSON.stringify(glrClump(clump));
+    out = JSON.stringify(glrClump(clump));
     clump.delete();
-
-    let gltf = glr2gltf(out);
-    var loader = new GLTFLoader();
-    loader.parse(JSON.stringify(gltf), null, setup);
   }
 
   header.delete();
   stream.delete();
+  return out;
+}
+
+async function ipl2gltf(fname: string, ide?: string) {
+  const name = fname.toLowerCase().match(/([^\/]*).ipl$/)[1];
+  let txd = {};
+  let glr = {};
+  let nodes = [];
+  let named = {};
+
+  async function read(uri: string, cb: (section: string, line: string) => Promise<void>) {
+    const text = await fetch(uri).then(response => response.text());
+    const lines = text.split("\n");
+    let section = null;
+    for (const s of lines) {
+      const line = s.trim().toLowerCase();
+      if (line === "" || line[0] === "#") continue;
+      if (section === null) {
+        section = line;
+      } else if (line === "end") {
+        section = null;
+      } else {
+        await cb(section, line);
+      }
+    }
+  }
+
+  async function parseItem(section: string, line: string) {
+    if (section === "inst") {
+      const [id, model, posX, posY, posZ, scaleX, scaleY, scaleZ, rotX, rotY, rotZ, rotW] = line.split(", ");
+      if (model.startsWith("lod")) return;
+      if (!glr[model]) {
+        console.log(model, txd[model]);
+        glr[model] = await dff2glr(model, txd[model]);
+      }
+      let obj = JSON.parse(glr[model]);
+      named = Object.assign(named, obj.named);
+      let node = obj.scene.nodes[0];
+      if (node.children && node.children.length > 1) {
+        for (const child of node.children) {
+          if (child.name.endsWith("_l0")) { // breakable objects
+            node = child;
+            break;
+          }
+        }
+      }
+      node.name = model + "." + id;
+      node.translation = [Number(posX), Number(posY), Number(posZ)];
+      node.rotation = [Number(rotX), Number(rotY), Number(rotZ), -Number(rotW)];
+      node.scale = [Number(scaleX), Number(scaleY), Number(scaleZ)];
+      nodes.push(node);
+    }
+  }
+
+  let ides = [fname.match(/.*\/maps\//) + "gta3.IDE"];
+  if (ide) ides.push(ide);
+  for (const ide of ides) {
+    await read(ide, async function (section, line) {
+      if (section === "objs" || section === "tobj") {
+        const row = line.split(", ");
+        const id = row[0];
+        const model = row[1];
+        txd[model] = row[2];
+        const dist = (row.length > 5) ? row[4] : row[3];
+        const flags = (section === "tobj") ? row[row.length - 3] : row[row.length - 1];
+      }
+    })
+  }
+
+  await read(fname, parseItem);
+
+  let model = {
+    asset: { generator: "dff2gltf", version: "2.0" },
+    scene: {
+      nodes: [{
+        name: name, children: nodes, rotation: [0.5, 0.5, 0.5, -0.5]
+      }]
+    },
+    named: named
+  };
+
+  return glr2gltf(JSON.stringify(model, null, 2));
 }
 
 async function main() {
@@ -353,15 +441,24 @@ async function main() {
     }
   });
 
+  let dir = await fetch("/data/models/gta3.dir").then(response => response.arrayBuffer());
+  assets = loadDIR(dir);
+
+  let gltf = null;
   const urlParams = new URLSearchParams(window.location.search);
-  let dir = await fetch("/data/models/gta3.dir").then(response => response.arrayBuffer())
-  let assets = loadDIR(dir);
-  let assetDFF = assets[urlParams.get("dff").toLowerCase() + ".dff"];
-  let assetTXD = assets[urlParams.get("txd").toLowerCase() + ".txd"];
-  let dff = await fetchAsset(assetDFF).then(response => response.arrayBuffer())
-  let txd = await fetchAsset(assetTXD).then(response => response.arrayBuffer())
-  loadTXD(txd);
-  await renderModel(dff);
+  if (urlParams.get("dff")) {
+    let dff = urlParams.get("dff").toLowerCase();
+    let txd = urlParams.get("txd").toLowerCase();
+    let out = await dff2glr(dff, txd);
+    gltf = glr2gltf(out);
+  } else if (urlParams.get("ipl")) {
+    let ipl = "/data/data/maps/" + urlParams.get("ipl").toLowerCase() + ".ipl";
+    let ide = urlParams.get("ide");
+    if (ide) ide = "/data/data/maps/" + ide.toLowerCase() + ".ide";
+    gltf = await ipl2gltf(ipl, ide);
+  }
+  let loader = new GLTFLoader();
+  loader.parse(JSON.stringify(gltf), null, setup);
 }
 
 main().catch(console.error);
