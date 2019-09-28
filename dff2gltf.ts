@@ -76,7 +76,7 @@ function animate() {
 
 function UTF8ToString(array: Uint8Array) {
   let length = 0; while (length < array.length && array[length]) length++;
-  return new TextDecoder('utf8').decode(array.subarray(0, length));
+  return new TextDecoder().decode(array.subarray(0, length));
 }
 
 interface Asset {

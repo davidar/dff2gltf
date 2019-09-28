@@ -2,7 +2,7 @@ import Module from "./rw";
 
 function UTF8ToString(array: Uint8Array) {
   let length = 0; while (length < array.length && array[length]) length++;
-  return new TextDecoder('utf8').decode(array.subarray(0, length));
+  return new TextDecoder().decode(array.subarray(0, length));
 }
 
 export let M = null; // TODO no export
@@ -30,6 +30,24 @@ export class CObject {
   }
   delete() {
     delete this.p;
+  }
+  static string(ptr: number) {
+    let view = M.HEAPU8.subarray(ptr);
+    return UTF8ToString(view);
+  }
+  static uint8Array(ptr: number, length: number): Uint8Array {
+    if (!ptr) return null;
+    return M.HEAPU8.subarray(ptr, ptr + length);
+  }
+  static uint16Array(ptr: number, length: number): Uint16Array {
+    if (!ptr) return null;
+    let i = ptr / 2;
+    return M.HEAPU16.subarray(i, i + length);
+  }
+  static float32Array(ptr: number, length: number): Float32Array {
+    if (!ptr) return null;
+    let i = ptr / 4;
+    return M.HEAPF32.subarray(i, i + length);
   }
 }
 
@@ -153,21 +171,70 @@ export class LLLink extends CObject {
   }
 }
 
+enum FilterMode {
+  NEAREST = 1,
+  LINEAR,
+  MIPNEAREST,
+  MIPLINEAR,
+  LINEARMIPNEAREST,
+  LINEARMIPLINEAR
+}
+enum Addressing {
+  WRAP = 1,
+  MIRROR,
+  CLAMP,
+  BORDER
+}
+
 export class Texture extends CObject {
+  static readonly FilterMode = FilterMode;
+  static readonly Addressing = Addressing;
   static fromDict(lnk: LLLink) {
     return new Texture(M._rw_Texture_fromDict(lnk.ptr));
   }
-  get name(): string {
-    let p = M._rw_Texture_name(this.ptr);
-    let view = M.HEAPU8.subarray(p);
-    return UTF8ToString(view);
+  get name() {
+    return CObject.string(M._rw_Texture_name(this.ptr));
   }
   get raster() {
     return new Raster(M._rw_Texture_raster(this.ptr));
   }
+  get filter(): FilterMode {
+    return M._rw_Texture_getFilter(this.ptr);
+  }
+  get addressU(): Addressing {
+    return M._rw_Texture_getAddressU(this.ptr);
+  }
+  get addressV(): Addressing {
+    return M._rw_Texture_getAddressV(this.ptr);
+  }
+}
+
+enum Format {
+  DEFAULT    = 0,
+  C1555      = 0x0100,
+  C565       = 0x0200,
+  C4444      = 0x0300,
+  LUM8       = 0x0400,
+  C8888      = 0x0500,
+  C888       = 0x0600,
+  D16        = 0x0700,
+  D24        = 0x0800,
+  D32        = 0x0900,
+  C555       = 0x0A00,
+  AUTOMIPMAP = 0x1000,
+  PAL8       = 0x2000,
+  PAL4       = 0x4000,
+  MIPMAP     = 0x8000
 }
 
 export class Raster extends CObject {
+  static readonly Format = Format;
+  static formatHasAlpha(f: Format) {
+    return M._rw_Raster_formatHasAlpha(f) !== 0;
+  }
+  get format(): Format {
+    return M._rw_Raster_format(this.ptr);
+  }
   toImage() {
     return new Image(M._rw_Raster_toImage(this.ptr));
   }
@@ -216,9 +283,104 @@ export class Clump extends CObject {
   static streamRead(stream: Stream) {
     return new Clump(M._rw_Clump_streamRead(stream.ptr));
   }
+  get atomics() {
+    return new LinkList(M._rw_Clump_atomics(this.ptr));
+  }
+  get frame() {
+    return new Frame(M._rw_Clump_getFrame(this.ptr));
+  }
   delete() {
     M._rw_Clump_destroy(this.ptr);
     super.delete();
+  }
+}
+
+export class Atomic extends CObject {
+  static fromClump(lnk: LLLink) {
+    return new Atomic(M._rw_Atomic_fromClump(lnk.ptr));
+  }
+  get frame() {
+    return new Frame(M._rw_Atomic_getFrame(this.ptr));
+  }
+  get geometry() {
+    return new Geometry(M._rw_Atomic_geometry(this.ptr));
+  }
+}
+
+export class Frame extends CObject {
+  get name() {
+    return CObject.string(M._gta_getNodeName(this.ptr));
+  }
+}
+
+export class Geometry extends CObject {
+  get numVertices(): number {
+    return M._rw_Geometry_numVertices(this.ptr);
+  }
+  get numTexCoordSets(): number {
+    return M._rw_Geometry_numTexCoordSets(this.ptr);
+  }
+  get colors() {
+    return CObject.uint8Array(M._rw_Geometry_colors(this.ptr), 4 * this.numVertices);
+  }
+  get meshHeader() {
+    return new MeshHeader(M._rw_Geometry_meshHeader(this.ptr));
+  }
+  morphTarget(i: number) {
+    return new MorphTarget(M._rw_Geometry_morphTargets(this.ptr, i));
+  }
+  texCoords(i: number) {
+    return CObject.float32Array(M._rw_Geometry_texCoords(this.ptr, i),
+      2 * this.numVertices);
+  }
+}
+
+export class MorphTarget extends CObject {
+  get parent() {
+    return new Geometry(M._rw_MorphTarget_parent(this.ptr));
+  }
+  get vertices() {
+    return CObject.float32Array(M._rw_MorphTarget_vertices(this.ptr),
+      3 * this.parent.numVertices);
+  }
+  get normals() {
+    return CObject.float32Array(M._rw_MorphTarget_normals(this.ptr),
+      3 * this.parent.numVertices);
+  }
+}
+
+export class MeshHeader extends CObject {
+  get numMeshes(): number {
+    return M._rw_MeshHeader_numMeshes(this.ptr);
+  }
+  get tristrip() {
+    return (M._rw_MeshHeader_flags(this.ptr) & 1) !== 0;
+  }
+  mesh(i: number) {
+    return new Mesh(M._rw_MeshHeader_getMeshes(this.ptr, i));
+  }
+}
+
+export class Mesh extends CObject {
+  get numIndices() {
+    return M._rw_Mesh_numIndices(this.ptr);
+  }
+  get indices() {
+    return CObject.uint16Array(M._rw_Mesh_indices(this.ptr), this.numIndices);
+  }
+  get material() {
+    return new Material(M._rw_Mesh_material(this.ptr));
+  }
+}
+
+export class Material extends CObject {
+  get texture() {
+    let p = M._rw_Material_texture(this.ptr);
+    if (!p) return null;
+    return new Texture(p);
+  }
+  get color() {
+    return CObject.uint8Array(M._rw_Material_color(this.ptr), 4);
   }
 }
 
