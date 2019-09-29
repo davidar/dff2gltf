@@ -44,10 +44,9 @@ IPL = \
 	$(GTA3)/data/maps/landne/landne \
 	$(GTA3)/data/maps/landsw/landsw
 
-img: img2files
+img:
 	mkdir -p img
-	cd img && ../img2files $(GTA3)/models/gta3 && cd ..
-	cp $(GTA3)/models/*.txd $(GTA3)/models/*.TXD img
+	cd img && ../dir2dir.ts $(GTA3)/models/gta3 && cd ..
 
 txd: img txd2png
 	mkdir -p txd
