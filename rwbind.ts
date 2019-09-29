@@ -49,6 +49,15 @@ export class CObject {
   }
 }
 
+export enum Platform {
+  PLATFORM_NULL = 0,
+  PLATFORM_GL   = 2,
+  PLATFORM_PS2  = 4,
+  PLATFORM_XBOX = 5,
+  PLATFORM_D3D8 = 8,
+  PLATFORM_D3D9 = 9,
+}
+
 export enum PluginID {
   // Core
   ID_NAOBJECT      = 0x00,
@@ -189,6 +198,12 @@ export class Texture extends CObject {
   static readonly Addressing = Addressing;
   static fromDict(lnk: LLLink) {
     return new Texture(M._rw_Texture_fromDict(lnk.ptr));
+  }
+  static setCreateDummies(b: boolean) {
+    M._rw_Texture_setCreateDummies(b ? 1 : 0);
+  }
+  static setLoadTextures(b: boolean) {
+    M._rw_Texture_setLoadTextures(b ? 1 : 0);
   }
   get name() {
     return CObject.string(M._rw_Texture_name(this.ptr));
@@ -386,16 +401,18 @@ interface InitOpt {
   locateFile?(path: string, prefix: string): string;
   loadTextures?: boolean;
   gtaPlugins?: boolean;
+  platform?: Platform;
 }
 
 export function init(opt: InitOpt) {
   return new Promise(resolve => Module(opt).then(module => {
     M = module;
+    if (opt.platform) M._rw_platform_set(opt.platform);
     M._rw_Engine_init();
     if (opt.gtaPlugins) M._gta_attachPlugins();
     M._rw_Engine_open();
     M._rw_Engine_start(0);
-    if (opt.loadTextures) M._rw_Texture_setLoadTextures(opt.loadTextures ? 1 : 0);
+    if (opt.loadTextures) Texture.setLoadTextures(opt.loadTextures);
     resolve();
   }));
 }

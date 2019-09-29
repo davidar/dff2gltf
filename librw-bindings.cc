@@ -7,6 +7,7 @@
 extern "C" {
 A void rw_currentUVAnimDictionary_set(rw::UVAnimDictionary *v)
     { rw::currentUVAnimDictionary = v; }
+A void rw_platform_set(rw::Platform p) { rw::platform = p; }
 A bool rw_readChunkHeaderInfo(rw::Stream *s, rw::ChunkHeaderInfo *h)
     { return rw::readChunkHeaderInfo(s, h); }
 
