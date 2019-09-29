@@ -35,7 +35,7 @@ async function main() {
 
       let ctx = c.getContext("2d");
       let buf = ctx.createImageData(img.width, img.height);
-      let pixels = img.pixels();
+      let pixels = img.pixels;
       if (img.hasAlpha()) {
         buf.data.set(pixels);
       } else {

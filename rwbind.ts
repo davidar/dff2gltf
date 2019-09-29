@@ -7,22 +7,20 @@ function UTF8ToString(array: Uint8Array) {
 
 let M = null;
 
-export class NullPointerException {}
-
 export class CObject {
   private p: number;
   constructor(ptr: number) {
     if (ptr) {
       this.p = ptr;
     } else {
-      throw new NullPointerException();
+      throw new Error("cannot construct NULL object");
     }
   }
   get ptr() {
     if (this.p) {
       return this.p;
     } else {
-      throw new NullPointerException();
+      throw new Error("use after free");
     }
   }
   is(other: CObject) {
@@ -151,7 +149,7 @@ export class TexDictionary extends CObject {
     return new LinkList(M._rw_TexDictionary_textures(this.ptr));
   }
   delete() {
-    M._rw_TexDictionary_delete(this.ptr);
+    M._rw_TexDictionary_destroy(this.ptr);
     super.delete();
   }
 }
@@ -253,9 +251,9 @@ export class Image extends CObject {
   get height(): number {
     return M._rw_Image_height(this.ptr);
   }
-  pixels() {
-    return new Uint8Array(M.HEAPU8.buffer,
-      M._rw_Image_pixels(this.ptr), this.bpp * this.width * this.height);
+  get pixels() {
+    return CObject.uint8Array(M._rw_Image_pixels(this.ptr),
+      this.bpp * this.width * this.height);
   }
   hasAlpha() {
     return M._rw_Image_hasAlpha(this.ptr) !== 0;

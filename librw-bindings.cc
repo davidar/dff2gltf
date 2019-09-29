@@ -82,6 +82,7 @@ A void rw_TexDictionary_setCurrent(rw::TexDictionary *txd)
     { rw::TexDictionary::setCurrent(txd); }
 A rw::LinkList *rw_TexDictionary_textures(rw::TexDictionary *self)
     { return &self->textures; }
+A void rw_TexDictionary_destroy(rw::TexDictionary *self) { self->destroy(); }
 
 A void rw_Texture_setCreateDummies(bool b) { rw::Texture::setCreateDummies(b); }
 A void rw_Texture_setLoadTextures(bool b) { rw::Texture::setLoadTextures(b); }
