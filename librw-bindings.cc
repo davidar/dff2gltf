@@ -52,6 +52,8 @@ A rw::LLLink *rw_LLLink_next(rw::LLLink *self) { return self->next; }
 
 A rw::Texture *rw_Material_texture(rw::Material *self) { return self->texture; }
 A rw::RGBA *rw_Material_color(rw::Material *self) { return &self->color; }
+A rw::SurfaceProperties *rw_Material_surfaceProps(rw::Material *self)
+    { return &self->surfaceProps; }
 
 A uint32_t rw_Mesh_numIndices(rw::Mesh *self) { return self->numIndices; }
 A uint16_t *rw_Mesh_indices(rw::Mesh *self) { return self->indices; }
@@ -76,6 +78,10 @@ A rw::StreamMemory *rw_StreamMemory_open(rw::StreamMemory *self, uint8_t *data, 
     { return self->open(data, length, capacity); }
 A void rw_StreamMemory_close(rw::StreamMemory *self) { self->close(); }
 A void rw_StreamMemory_delete(rw::StreamMemory *self) { delete self; }
+
+A float rw_SurfaceProperties_ambient(rw::SurfaceProperties *self) { return self->ambient; }
+A float rw_SurfaceProperties_specular(rw::SurfaceProperties *self) { return self->specular; }
+A float rw_SurfaceProperties_diffuse(rw::SurfaceProperties *self) { return self->diffuse; }
 
 A rw::TexDictionary *rw_TexDictionary_streamRead(rw::Stream *s)
     { return rw::TexDictionary::streamRead(s); }

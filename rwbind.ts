@@ -395,6 +395,21 @@ export class Material extends CObject {
   get color() {
     return CObject.uint8Array(M._rw_Material_color(this.ptr), 4);
   }
+  get surfaceProps() {
+    return new SurfaceProperties(M._rw_Material_surfaceProps(this.ptr));
+  }
+}
+
+export class SurfaceProperties extends CObject {
+  get ambient(): number {
+    return M._rw_SurfaceProperties_ambient(this.ptr);
+  }
+  get specular(): number {
+    return M._rw_SurfaceProperties_specular(this.ptr);
+  }
+  get diffuse(): number {
+    return M._rw_SurfaceProperties_diffuse(this.ptr);
+  }
 }
 
 interface InitOpt {
